@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://cdnjs.cloudflare.com; connect-src https://overpass-api.de https://overpass.private.coffee https://overpass.kumi.systems https://nominatim.openstreetmap.org; base-uri 'none'; form-action 'none'">
+<title>近くのごはん</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8D%9C%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root {
+  --bg: #faf8f5; --card: #fff; --text: #222; --sub: #6b6b6b; --line: #e6e1da;
+  --accent: #d9480f; --accent-soft: #fff0e8; --ok: #2b8a3e; --ng: #868e96;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161514; --card: #201f1d; --text: #eee; --sub: #a0a0a0; --line: #33312e;
+    --accent: #ff8a5b; --accent-soft: #3a2a22; --ok: #69db7c; --ng: #868e96;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+}
+header { padding: 14px 16px 8px; }
+h1 { margin: 0 0 10px; font-size: 20px; }
+.row { display: flex; gap: 8px; margin-bottom: 8px; }
+.row > * { min-width: 0; }
+button, select, input[type=search] {
+  font: inherit; color: inherit; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--card); padding: 9px 12px;
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button:disabled { opacity: .5; }
+input[type=search] { flex: 1; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+.chip { white-space: nowrap; border-radius: 999px; padding: 6px 12px; font-size: 14px; }
+.chip[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+label.toggle { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--sub); white-space: nowrap; }
+#map { height: 260px; border-block: 1px solid var(--line); }
+#status { padding: 10px 16px 4px; color: var(--sub); font-size: 13px; min-height: 28px; }
+#status.error { color: #c92a2a; }
+#list { list-style: none; margin: 0; padding: 4px 16px 24px; display: grid; gap: 10px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; scroll-margin-top: 8px; }
+.card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.name { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
+.dist { color: var(--sub); font-size: 13px; white-space: nowrap; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; font-size: 12px; }
+.tag { border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; color: var(--sub); }
+.tag.open { color: var(--ok); border-color: var(--ok); }
+.tag.closed { color: var(--ng); }
+.hours { font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
+.links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 14px; }
+.links a { color: var(--accent); text-decoration: none; font-weight: 600; }
+#more { display: block; margin: 0 auto 28px; }
+footer { padding: 0 16px 28px; color: var(--sub); font-size: 12px; }
+footer a { color: inherit; }
+</style>
+</head>
+<body>
+<header>
+  <h1>近くのごはん</h1>
+  <div class="row">
+    <button id="locate" class="primary">現在地から探す</button>
+    <select id="radius" aria-label="検索範囲">
+      <option value="300">300m</option>
+      <option value="500" selected>500m</option>
+      <option value="1000">1km</option>
+      <option value="2000">2km</option>
+    </select>
+  </div>
+  <form id="searchForm" class="row">
+    <input id="place" type="search" placeholder="駅名・地名で探す（例：渋谷駅）" aria-label="場所を検索">
+    <button type="submit">検索</button>
+  </form>
+  <div class="chips" id="chips"></div>
+  <div class="row" style="margin-top:6px; justify-content:space-between; align-items:center;">
+    <label class="toggle"><input type="checkbox" id="openOnly"> 営業中のみ</label>
+    <button id="random" disabled>今日はここ！</button>
+  </div>
+</header>
+
+<div id="map"></div>
+<div id="status">「現在地から探す」を押すか、場所を入力してください。</div>
+<ul id="list"></ul>
+<button id="more" hidden>もっと見る</button>
+
+<footer>
+  お店のデータ：<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>。
+  評価・口コミのデータはありません。「おすすめ順」は営業中か・距離・登録情報の充実度で並べています。営業時間は未登録・古い場合があります。
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/suncalc@1.9.0/suncalc.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/i18next@21.10.0/dist/umd/i18next.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/opening_hours@3.8.0/build/opening_hours.min.js" onerror="console.warn('opening_hours.js を読み込めませんでした（営業中判定なしで動作します）')"></script>
+<script>
+'use strict';
+
+// 無料の公開サーバーは混み合うことがあるため、本家を再試行したあとミラーへ切り替える
+const OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
+const TIMEOUT_MS = 15000;
+const PAGE = 30;
+
+const GENRES = {
+  all:  { label: 'すべて' },
+  meal: { label: '食事',         test: p => p.amenity === 'restaurant' || p.amenity === 'fast_food' },
+  cafe: { label: 'カフェ',       test: p => p.amenity === 'cafe' },
+  bar:  { label: '居酒屋・バー', test: p => p.amenity === 'bar' || p.amenity === 'pub' || p.cuisines.includes('izakaya') },
+};
+const AMENITY_JA = { restaurant: 'レストラン', cafe: 'カフェ', fast_food: 'ファストフード', bar: 'バー', pub: 'パブ' };
+const CUISINE_JA = {
+  japanese: '和食', sushi: '寿司', ramen: 'ラーメン', noodle: '麺類', udon: 'うどん', soba: 'そば',
+  izakaya: '居酒屋', yakiniku: '焼肉', tempura: '天ぷら', tonkatsu: 'とんかつ', curry: 'カレー',
+  chinese: '中華', korean: '韓国料理', italian: 'イタリアン', pizza: 'ピザ', french: 'フレンチ',
+  burger: 'ハンバーガー', sandwich: 'サンドイッチ', coffee_shop: 'コーヒー', thai: 'タイ料理',
+  indian: 'インド料理', vietnamese: 'ベトナム料理', steak_house: 'ステーキ', seafood: '海鮮',
+  chicken: 'チキン', donburi: '丼', gyudon: '牛丼', okonomiyaki: 'お好み焼き', regional: '郷土料理',
+  asian: 'アジア料理', western: '洋食', dessert: 'デザート', ice_cream: 'アイス', bakery: 'ベーカリー',
+};
+
+const state = { lat: null, lon: null, radius: 500, genre: 'all', openOnly: false, places: [], limit: PAGE, selectedId: null };
+const $ = s => document.querySelector(s);
+
+// ---------- 小さなユーティリティ ----------
+function h(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k);
+  return e;
+}
+function safeUrl(u) {
+  if (!u) return null;
+  try {
+    const url = new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u);
+    return /^https?:$/.test(url.protocol) ? url.href : null;
+  } catch { return null; }
+}
+function safePhone(p) {
+  if (!p) return null;
+  const first = p.split(';')[0].trim();
+  return /^[0-9+\-() ]{5,20}$/.test(first) ? first : null;
+}
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLon = (lon2 - lon1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+function fmtDist(m) { return m < 1000 ? `${Math.round(m / 10) * 10}m` : `${(m / 1000).toFixed(1)}km`; }
+function setStatus(msg, isError = false) {
+  const s = $('#status');
+  s.textContent = msg;
+  s.classList.toggle('error', isError);
+}
+
+// ---------- データ取得 ----------
+async function fetchPlaces(lat, lon, radius, onRetry) {
+  const q = `[out:json][timeout:25];nwr["name"]["amenity"~"^(restaurant|cafe|fast_food|bar|pub)$"](around:${radius},${lat},${lon});out center tags;`;
+  let lastErr;
+  for (const [i, ep] of OVERPASS.entries()) {
+    if (i > 0) { onRetry?.(i, OVERPASS.length - 1); await new Promise(r => setTimeout(r, 1500)); }
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+    try {
+      const res = await fetch(ep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(q),
+        signal: ac.signal,
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      // 混雑時は JSON ではなくエラー内容の XML が返るため、パースに失敗したら次のサーバーへ
+      const json = JSON.parse(await res.text());
+      if (/runtime error|timed out/i.test(json.remark || '')) throw new Error(json.remark);
+      return json.elements;
+    } catch (e) {
+      lastErr = e;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw lastErr;
+}
+
+function openState(hours) {
+  if (!hours || typeof opening_hours === 'undefined') return null;
+  try { return new opening_hours(hours).getState(new Date()); } catch { return null; }
+}
+
+function normalize(el, lat0, lon0, radius) {
+  const t = el.tags || {};
+  const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
+  if (lat == null || lon == null) return null;
+  const cuisines = (t.cuisine || '').split(';').map(s => s.trim()).filter(Boolean);
+  const p = {
+    id: el.type + el.id,
+    name: t['name:ja'] || t.name,
+    amenity: t.amenity, cuisines, lat, lon,
+    dist: haversine(lat0, lon0, lat, lon),
+    hours: t.opening_hours || null,
+    website: safeUrl(t.website || t['contact:website']),
+    phone: safePhone(t.phone || t['contact:phone']),
+  };
+  p.open = openState(p.hours);
+  p.genreLabel = (cuisines.map(c => CUISINE_JA[c]).filter(Boolean)[0]) || AMENITY_JA[p.amenity] || '飲食店';
+  // おすすめ度：営業中を最優先、近さ、登録情報の充実度
+  let s = 30 * (1 - Math.min(p.dist / radius, 1));
+  if (p.open === true) s += 40; else if (p.open === false) s -= 50;
+  if (cuisines.length) s += 8;
+  if (p.hours) s += 6;
+  if (p.website) s += 6;
+  if (p.phone) s += 4;
+  p.score = s;
+  return p;
+}
+
+// ---------- 地図 ----------
+const map = L.map('map', { zoomControl: true }).setView([35.681, 139.767], 15);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '&copy; OpenStreetMap contributors',
+}).addTo(map);
+const layer = L.layerGroup().addTo(map);
+let youMarker = null, circle = null;
+const markers = new Map();
+
+function drawMap(shown) {
+  layer.clearLayers();
+  markers.clear();
+  if (youMarker) youMarker.remove();
+  if (circle) circle.remove();
+  youMarker = L.circleMarker([state.lat, state.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#1c7ed6', fillOpacity: 1 }).addTo(map).bindTooltip('現在地');
+  circle = L.circle([state.lat, state.lon], { radius: state.radius, color: '#1c7ed6', weight: 1, fillOpacity: 0.04 }).addTo(map);
+  for (const p of shown) {
+    const m = L.circleMarker([p.lat, p.lon], { radius: 7, color: '#fff', weight: 2, fillColor: '#d9480f', fillOpacity: 0.95 });
+    m.bindTooltip(p.name);
+    m.on('click', () => select(p.id, true));
+    m.addTo(layer);
+    markers.set(p.id, m);
+  }
+}
+
+// ---------- 表示 ----------
+function filtered() {
+  const g = GENRES[state.genre];
+  return state.places
+    .filter(p => !g.test || g.test(p))
+    .filter(p => !state.openOnly || p.open === true)
+    .sort((a, b) => b.score - a.score);
+}
+
+function render({ fit = false } = {}) {
+  const all = filtered();
+  const shown = all.slice(0, state.limit);
+  $('#random').disabled = all.length === 0;
+  $('#more').hidden = all.length <= state.limit;
+  if (state.lat != null) {
+    drawMap(shown);
+    if (fit) map.fitBounds(circle.getBounds(), { padding: [10, 10] });
+  }
+  const list = $('#list');
+  list.replaceChildren();
+  for (const p of shown) list.append(card(p));
+  if (state.lat != null) {
+    const note = all.length === 0 ? '条件に合うお店が見つかりませんでした。' : `おすすめ順に ${all.length} 件`;
+    setStatus(`${note}（半径${state.radius >= 1000 ? state.radius / 1000 + 'km' : state.radius + 'm'}）`);
+  }
+  if (state.selectedId) markSelected(state.selectedId);
+}
+
+function card(p) {
+  const gmap = `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
+  return h('li', { class: 'card', id: 'c-' + p.id, onclick: () => select(p.id, false) },
+    h('div', { class: 'top' },
+      h('span', { class: 'name' }, p.name),
+      h('span', { class: 'dist' }, fmtDist(p.dist))),
+    h('div', { class: 'meta' },
+      h('span', { class: 'tag' }, p.genreLabel),
+      p.open === true && h('span', { class: 'tag open' }, '営業中'),
+      p.open === false && h('span', { class: 'tag closed' }, '営業時間外')),
+    p.hours && h('div', { class: 'hours' }, p.hours),
+    h('div', { class: 'links' },
+      h('a', { href: gmap, target: '_blank', rel: 'noopener' }, '地図で開く'),
+      p.website && h('a', { href: p.website, target: '_blank', rel: 'noopener' }, 'Webサイト'),
+      p.phone && h('a', { href: 'tel:' + p.phone.replace(/[^0-9+]/g, '') }, '電話')));
+}
+
+function markSelected(id) {
+  document.querySelectorAll('.card.selected').forEach(e => e.classList.remove('selected'));
+  document.getElementById('c-' + id)?.classList.add('selected');
+  for (const [mid, m] of markers) m.setStyle(mid === id ? { radius: 11, fillColor: '#f59f00' } : { radius: 7, fillColor: '#d9480f' });
+}
+
+function select(id, scrollToCard) {
+  state.selectedId = id;
+  markSelected(id);
+  const m = markers.get(id);
+  if (m) { m.bringToFront(); map.panTo(m.getLatLng()); }
+  if (scrollToCard) document.getElementById('c-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ---------- 検索の実行 ----------
+let searchSeq = 0;
+async function searchAt(lat, lon) {
+  const seq = ++searchSeq;
+  state.lat = lat; state.lon = lon; state.limit = PAGE; state.selectedId = null;
+  map.setView([lat, lon], 15);
+  setStatus('お店を探しています…');
+  $('#list').replaceChildren();
+  try {
+    const els = await fetchPlaces(lat, lon, state.radius, (n, max) => {
+      if (seq === searchSeq) setStatus(`サーバーが混み合っています。再試行しています…（${n}/${max}）`);
+    });
+    if (seq !== searchSeq) return; // 後から始めた検索を優先する
+    state.places = els.map(e => normalize(e, lat, lon, state.radius)).filter(Boolean);
+    render({ fit: true });
+  } catch (e) {
+    console.error(e);
+    if (seq === searchSeq) setStatus('お店のデータを取得できませんでした。無料の公開サーバーが混み合っている可能性があります。少し待ってからもう一度お試しください。', true);
+  }
+}
+
+function locate() {
+  if (!navigator.geolocation) { setStatus('このブラウザは位置情報に対応していません。場所を入力してください。', true); return; }
+  setStatus('現在地を取得しています…');
+  navigator.geolocation.getCurrentPosition(
+    pos => searchAt(pos.coords.latitude, pos.coords.longitude),
+    err => {
+      const msg = err.code === 1 ? '位置情報の利用が許可されていません。ブラウザの設定を確認するか、場所を入力してください。'
+                : err.code === 3 ? '現在地の取得がタイムアウトしました。もう一度お試しください。'
+                : '現在地を取得できませんでした。場所を入力してください。';
+      setStatus(msg, true);
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+}
+
+async function searchPlaceName(q) {
+  setStatus('場所を探しています…');
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=ja&q=${encodeURIComponent(q)}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const r = (await res.json())[0];
+    if (!r) { setStatus('その場所が見つかりませんでした。', true); return; }
+    await searchAt(parseFloat(r.lat), parseFloat(r.lon));
+  } catch (e) {
+    console.error(e);
+    setStatus('場所を検索できませんでした。少し待ってからもう一度お試しください。', true);
+  }
+}
+
+// ---------- イベント ----------
+for (const [key, g] of Object.entries(GENRES)) {
+  $('#chips').append(h('button', {
+    class: 'chip', 'aria-pressed': String(key === state.genre), 'data-g': key,
+    onclick: () => {
+      state.genre = key; state.limit = PAGE;
+      document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.g === key)));
+      render();
+    },
+  }, g.label));
+}
+$('#locate').addEventListener('click', locate);
+$('#searchForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#place').value.trim(); if (q) searchPlaceName(q); });
+$('#radius').addEventListener('change', e => { state.radius = Number(e.target.value); if (state.lat != null) searchAt(state.lat, state.lon); });
+$('#openOnly').addEventListener('change', e => { state.openOnly = e.target.checked; state.limit = PAGE; render(); });
+$('#more').addEventListener('click', () => { state.limit += PAGE; render(); });
+$('#random').addEventListener('click', () => {
+  const pool = filtered().slice(0, 10);
+  if (!pool.length) return;
+  const p = pool[Math.floor(Math.random() * pool.length)];
+  if (!document.getElementById('c-' + p.id)) { state.limit = Math.max(state.limit, filtered().indexOf(p) + 1); render(); }
+  select(p.id, true);
+});
+</script>
+</body>
+</html>
