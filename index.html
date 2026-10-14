@@ -2,55 +2,57 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://tile.openstreetmap.org https://cdnjs.cloudflare.com; connect-src https://overpass-api.de https://overpass.private.coffee https://overpass.kumi.systems https://nominatim.openstreetmap.org; base-uri 'none'; form-action 'none'">
 <title>近くのごはん</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23d9ecbd'/%3E%3Cpath d='M16 6a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z' fill='%232d8540'/%3E%3Ccircle cx='16' cy='13' r='2.8' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23f8dfae'/%3E%3Cpath d='M16 6a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z' fill='%23c9441f'/%3E%3Ccircle cx='16' cy='13' r='2.8' fill='%23fff'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-/* クリーム色の地に、パステルのグリーンと水色、差し色のオレンジ。上にタイトルと街のイラスト、その下端に重ねた白いカードで検索する */
+/* あたたかいクリーム色の地に、トマトの赤・オレンジ・黄色。上にタイトルと街のイラスト、その下端に重ねた白いカードで検索する */
 :root {
   --font: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
-  --cream: #f8f4ea;
+  --cream: #fff8ec;
   --card: #ffffff;
-  --text: #4a3d2e;         /* あたたかい茶色 */
-  --sub: #6b6050;
-  --line: #e8e0cc;
-  --ground: #d9ecbd;       /* イラストの芝生色 */
-  --green: #2d8540;
-  --green-soft: #e3f3d5;
-  --green-line: #9fcf7f;
-  --green-text: #2b6a2f;
-  --blue: #1d6b84;
-  --blue-soft: #e0f1f6;
-  --blue-line: #9ccfe0;
-  --orange: #f3b146;
-  --orange-soft: #fff1d3;
-  --orange-text: #7a4f08;
-  --pin: #3f9d4e;          /* 地図のお店ピン */
-  --pin-sel: #f08a3c;      /* 選択中のピン */
-  --you: #3b9de0;
-  --shadow: 0 10px 26px rgba(120, 140, 80, .18);
+  --text: #4a3326;         /* こげ茶 */
+  --sub: #7a5f4c;
+  --line: #f1e0c8;
+  --ground: #f8dfae;       /* イラストの地面（バター色） */
+  --red: #c9441f;          /* 主ボタン・強調 */
+  --red-soft: #ffe0d6;
+  --red-line: #f08a6b;
+  --red-text: #9a2f12;
+  --orange-soft: #ffe7cf;
+  --orange-line: #f5a96a;
+  --orange-text: #8a3b0a;
+  --yellow-soft: #fff0c2;
+  --yellow-line: #f2c14e;
+  --yellow-text: #6b4a00;
+  --pin: #e4572e;          /* 地図のお店ピン */
+  --pin-ring: #9a2f12;
+  --pin-sel: #ffc531;      /* 選択中のピン */
+  --you: #3b8fe0;
+  --shadow: 0 10px 26px rgba(170, 100, 40, .18);
   color-scheme: light;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--cream); color: var(--text); font: 15px/1.6 var(--font); }
+html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+body { margin: 0; background: var(--cream); color: var(--text); font: 15px/1.6 var(--font); overflow-x: hidden; }
 .wrap { max-width: 720px; margin: 0 auto; padding-inline: 16px; }
 
 /* 上部：タイトルと街のイラスト */
 .hero { padding-block: 22px 0; }
 .brand {
   display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 6px 16px 6px 10px;
-  border-radius: 999px; background: var(--card); box-shadow: 0 2px 10px rgba(120, 140, 80, .16);
-  font-size: 14px; font-weight: 700; color: var(--green); letter-spacing: .04em;
+  border-radius: 999px; background: var(--card); box-shadow: 0 2px 10px rgba(170, 100, 40, .16);
+  font-size: 14px; font-weight: 700; color: var(--red); letter-spacing: .04em;
 }
 .brand svg { width: 20px; height: 20px; flex: none; }
 .catch { margin: 14px 0 0; font-size: clamp(24px, 7vw, 34px); font-weight: 500; letter-spacing: .06em; line-height: 1.5; }
-.catch b { font-weight: 700; color: var(--green); }
+.catch b { font-weight: 700; color: var(--red); }
 .lead { margin: 6px 0 0; color: var(--sub); font-size: 13px; }
 .scene {
   margin-top: 16px; aspect-ratio: 16 / 10; max-height: 420px; width: 100%;
@@ -60,76 +62,79 @@ body { margin: 0; background: var(--cream); color: var(--text); font: 15px/1.6 v
 .bob { animation: bob 2.6s ease-in-out infinite; }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 
-/* 検索カード */
+/* 検索カード（列が内容の幅に引き伸ばされないよう minmax(0,1fr) で固定する） */
 .panel {
-  margin-top: -44px; padding: 14px; display: grid; gap: 10px; position: relative;
+  margin-top: -44px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; position: relative;
   background: var(--card); border-radius: 24px; box-shadow: var(--shadow);
 }
-.row { display: flex; gap: 8px; align-items: center; }
+/* 左は残りの幅いっぱい、右は中身の幅。iPhone でも中身の大きさに引っ張られないよう flex ではなく grid で固定する */
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; min-width: 0; }
 .row > * { min-width: 0; }
 button, select, input[type=search] {
   font: inherit; color: inherit; min-height: 44px;
   border: 1.5px solid var(--line); border-radius: 999px; background: var(--card); padding: 8px 16px;
 }
+select, input[type=search] { font-size: 16px; }   /* 16px 未満だと iPhone が入力時に画面を拡大してしまう */
 button { cursor: pointer; transition: transform .12s ease; }
 button:active { transform: scale(.97); }
 button:disabled { opacity: .45; cursor: default; }
-:focus-visible { outline: 3px solid var(--blue-line); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--yellow-line); outline-offset: 2px; }
 .primary {
-  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  border: 0; font-weight: 700; color: #fff; background: var(--green);
-  box-shadow: 0 4px 12px rgba(45, 133, 64, .28);
+  width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 0; font-weight: 700; color: #fff; background: var(--red); white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(201, 68, 31, .3);
 }
 .primary svg { width: 18px; height: 18px; flex: none; }
-select { background: var(--blue-soft); border-color: var(--blue-line); color: var(--blue); font-weight: 700; }
-input[type=search] { flex: 1; background: var(--cream); }
-input[type=search]::placeholder { color: #9a8f7c; }
-.soft { background: var(--blue-soft); border-color: var(--blue-line); color: var(--blue); font-weight: 700; }
+select { flex: none; background: var(--yellow-soft); border-color: var(--yellow-line); color: var(--yellow-text); font-weight: 700; }
+input[type=search] { width: 100%; min-width: 0; background: var(--cream); }
+input[type=search]::placeholder { color: #a08a74; }
+.soft { flex: none; background: var(--orange-soft); border-color: var(--orange-line); color: var(--orange-text); font-weight: 700; }
 .chips { display: flex; gap: 8px; overflow-x: auto; padding-block: 2px; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
-.chip { white-space: nowrap; min-height: 38px; padding: 6px 16px; font-size: 14px; }
-.chip[aria-pressed=true] { background: var(--green-soft); border-color: var(--green-line); color: var(--green-text); font-weight: 700; }
-.tools { justify-content: space-between; }
+.chip { flex: none; white-space: nowrap; min-height: 38px; padding: 6px 16px; font-size: 14px; }
+.chip[aria-pressed=true] { background: var(--orange-soft); border-color: var(--orange-line); color: var(--orange-text); font-weight: 700; }
+.tools { justify-items: start; }
+.tools #random { justify-self: end; }
 label.toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--sub); white-space: nowrap; min-height: 44px; }
-label.toggle input { width: 20px; height: 20px; accent-color: var(--green); }
-#random { background: var(--orange-soft); border-color: var(--orange); color: var(--orange-text); font-weight: 700; }
+label.toggle input { width: 20px; height: 20px; accent-color: var(--red); }
+#random { flex: none; white-space: nowrap; background: var(--red-soft); border-color: var(--red-line); color: var(--red-text); font-weight: 700; }
 
 /* 地図 */
 #map {
   height: 280px; margin-top: 16px; border-radius: 24px; overflow: hidden;
   box-shadow: var(--shadow); border: 1px solid var(--line); z-index: 0;
 }
-.leaflet-tile-pane { filter: saturate(.68) brightness(1.05) contrast(.95); }
-.leaflet-container { font-family: var(--font); background: #e9f3e4; }
+.leaflet-tile-pane { filter: sepia(.14) saturate(.82) brightness(1.04) contrast(.96); }
+.leaflet-container { font-family: var(--font); background: #f6ead6; }
 
 #status { padding: 14px 4px 8px; color: var(--sub); font-size: 13px; min-height: 40px; }
-#status.error { color: #b83a3a; }
+#status.error { color: #b3261e; }
 
 /* お店の一覧 */
-#list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+#list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .card {
   background: var(--card); border: 1.5px solid transparent; border-radius: 20px;
-  padding: 14px 16px; box-shadow: 0 3px 14px rgba(120, 140, 80, .13); scroll-margin-top: 12px; cursor: pointer;
+  padding: 14px 16px; box-shadow: 0 3px 14px rgba(170, 100, 40, .14); scroll-margin-top: 12px; cursor: pointer;
 }
-.card.selected { border-color: var(--green-line); box-shadow: 0 0 0 4px rgba(124, 184, 102, .22); }
+.card.selected { border-color: var(--yellow-line); box-shadow: 0 0 0 4px rgba(242, 193, 78, .32); }
 .top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
-.name { font-weight: 700; font-size: 17px; line-height: 1.4; overflow-wrap: anywhere; }
+.name { font-weight: 700; font-size: 17px; line-height: 1.4; overflow-wrap: anywhere; min-width: 0; }
 .dist {
   flex: none; padding: 1px 10px; border-radius: 999px; font-size: 13px; font-weight: 700;
-  background: #f4efdf; color: #6b5a3f; font-variant-numeric: tabular-nums;
+  background: #fdeccf; color: #7a4a1a; font-variant-numeric: tabular-nums;
 }
 .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 12px; }
-.tag { border-radius: 999px; padding: 2px 10px; background: #efeadc; color: #6b6050; }
-.tag.genre { background: var(--blue-soft); color: var(--blue); }
-.tag.open { background: var(--green-soft); color: var(--green-text); font-weight: 700; }
+.tag { border-radius: 999px; padding: 2px 10px; background: #f3ead9; color: #6b5444; }
+.tag.genre { background: var(--orange-soft); color: var(--orange-text); }
+.tag.open { background: #ffe9a8; color: var(--yellow-text); font-weight: 700; }
 .tag.open::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
 .hours { margin-top: 6px; font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
 .links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .links a {
   display: inline-flex; align-items: center; min-height: 36px; padding: 4px 14px; border-radius: 999px;
-  font-size: 14px; font-weight: 700; text-decoration: none; color: var(--blue); background: var(--blue-soft);
+  font-size: 14px; font-weight: 700; text-decoration: none; color: var(--orange-text); background: var(--orange-soft);
 }
-.links a:first-child { color: #fff; background: var(--green); }
+.links a:first-child { color: #fff; background: var(--red); }
 
 #more { display: block; margin: 18px auto 0; min-width: 160px; }
 footer { padding-block: 28px 40px; color: var(--sub); font-size: 12px; line-height: 1.7; }
@@ -140,12 +145,12 @@ footer a { color: inherit; }
 <body>
 <header class="hero wrap">
   <h1 class="brand">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7.5 7.5 0 0 0-7.5 7.5C4.5 15 12 22 12 22s7.5-7 7.5-12.5A7.5 7.5 0 0 0 12 2z" fill="#2d8540"/><circle cx="12" cy="9.5" r="3" fill="#fff"/></svg>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7.5 7.5 0 0 0-7.5 7.5C4.5 15 12 22 12 22s7.5-7 7.5-12.5A7.5 7.5 0 0 0 12 2z" fill="#c9441f"/><circle cx="12" cy="9.5" r="3" fill="#fff"/></svg>
     近くのごはん
   </h1>
   <p class="catch">歩いて行ける、<br><b>おいしい</b>を見つけよう。</p>
   <p class="lead">現在地や駅名から、近くの飲食店をさがせます。</p>
-  <div class="scene" id="scene" role="img" aria-label="パステルグリーンと水色で描いた、レストランやカフェのある街並みのイラスト"></div>
+  <div class="scene" id="scene" role="img" aria-label="オレンジや赤、黄色であたたかく描いた、レストランやカフェのある街並みのイラスト"></div>
 </header>
 
 <main class="wrap">
@@ -163,7 +168,7 @@ footer a { color: inherit; }
       </select>
     </div>
     <form id="searchForm" class="row">
-      <input id="place" type="search" placeholder="駅名・地名で探す（例：渋谷駅）" aria-label="場所を検索">
+      <input id="place" type="search" placeholder="駅名・地名で探す" aria-label="場所を検索">
       <button type="submit" class="soft">検索</button>
     </form>
     <div class="chips" id="chips"></div>
@@ -206,8 +211,9 @@ function buildTown() {
   const ground = s => items.push({ d: g0++, s });
   const add = (d, s) => items.push({ d, s });
 
-  const W = { top: '#f4fbfc', left: '#e0f2f5', right: '#c8e6eb' };          // 壁
-  const GLASS_L = '#a9d6e6', GLASS_R = '#8fc3d8', WOOD = '#d9b27c';
+  const W = { top: '#fffaf0', left: '#fdebd0', right: '#f4d3a8' };          // 壁
+  const GLASS_L = '#bfe0ea', GLASS_R = '#a3cddb', WOOD = '#b9805a';
+  const SHADOW = '#a8742c';
 
   // 立方体：左面（+y側）・右面（+x側）・上面
   const box = (x, y, w, d, h, c, z0 = 0, noTop = false) => {
@@ -216,7 +222,7 @@ function buildTown() {
     const r = [P(x + w, y, z0 + h), P(x + w, y + d, z0 + h), P(x + w, y + d, z0), P(x + w, y, z0)];
     return poly(l, c.left) + poly(r, c.right) + (noTop ? '' : poly(t, c.top));
   };
-  const shadow = (x, y, w, d) => poly([P(x, y), P(x + w + .7, y), P(x + w + .7, y + d + .7), P(x, y + d + .7)], '#5d8a3a', 'opacity=".16"');
+  const shadow = (x, y, w, d) => poly([P(x, y), P(x + w + .7, y), P(x + w + .7, y + d + .7), P(x, y + d + .7)], SHADOW, 'opacity=".18"');
   const winL = (x1, x2, yy, z1, z2, fill = GLASS_L) => poly([P(x1, yy, z2), P(x2, yy, z2), P(x2, yy, z1), P(x1, yy, z1)], fill);
   const winR = (xx, y1, y2, z1, z2, fill = GLASS_R) => poly([P(xx, y1, z2), P(xx, y2, z2), P(xx, y2, z1), P(xx, y1, z1)], fill);
 
@@ -235,81 +241,78 @@ function buildTown() {
       + winR(x + w, y + d * .3, y + d * .7, .3, .8);
   };
 
-  // 木・植物・人など
-  const tree = (x, y, s = 1) => {
-    const [px, py] = P(x, y);
+  // 木・植物・人など（木は秋のようなオレンジ・黄・赤の3色）
+  const LEAF = [['#e0782f', '#f08f45', '#f8b46a'], ['#e0a82c', '#f0c443', '#f8dd7f'], ['#cf4a30', '#e1643f', '#ef8e6b']];
+  const tree = (x, y, s = 1, k = 0) => {
+    const [px, py] = P(x, y), p = LEAF[k % 3];
     const c = (cx, cy, r, fill) => `<circle cx="${f(px + cx * s)}" cy="${f(py + cy * s)}" r="${f(r * s)}" fill="${fill}"/>`;
-    return `<ellipse cx="${f(px)}" cy="${f(py + 2)}" rx="${f(18 * s)}" ry="${f(7 * s)}" fill="#5d8a3a" opacity=".2"/>`
-      + `<rect x="${f(px - 2.5 * s)}" y="${f(py - 14 * s)}" width="${f(5 * s)}" height="${f(14 * s)}" rx="2" fill="#8b7a5c"/>`
-      + c(-10, -26, 13, '#6aa957') + c(11, -27, 12, '#6aa957') + c(0, -36, 14, '#6aa957')
-      + c(-3, -24, 13, '#7dba68') + c(-6, -37, 8, '#93cc78');
+    return `<ellipse cx="${f(px)}" cy="${f(py + 2)}" rx="${f(18 * s)}" ry="${f(7 * s)}" fill="${SHADOW}" opacity=".22"/>`
+      + `<rect x="${f(px - 2.5 * s)}" y="${f(py - 14 * s)}" width="${f(5 * s)}" height="${f(14 * s)}" rx="2" fill="#8b6a4c"/>`
+      + c(-10, -26, 13, p[0]) + c(11, -27, 12, p[0]) + c(0, -36, 14, p[0])
+      + c(-3, -24, 13, p[1]) + c(-6, -37, 8, p[2]);
   };
   const pine = (x, y, s = 1) => {
     const [px, py] = P(x, y);
     const tri = (w, top, bot, fill) => `<polygon points="${f(px - w * s)},${f(py - bot * s)} ${f(px + w * s)},${f(py - bot * s)} ${f(px)},${f(py - top * s)}" fill="${fill}" stroke="${fill}" stroke-width="5" stroke-linejoin="round"/>`;
-    return `<ellipse cx="${f(px)}" cy="${f(py + 2)}" rx="${f(14 * s)}" ry="${f(5.5 * s)}" fill="#5d8a3a" opacity=".2"/>`
-      + `<rect x="${f(px - 2 * s)}" y="${f(py - 12 * s)}" width="${f(4 * s)}" height="${f(12 * s)}" fill="#8b7a5c"/>`
-      + tri(15, 36, 11, '#b3dc66') + tri(11, 54, 28, '#c8ec7e');
+    return `<ellipse cx="${f(px)}" cy="${f(py + 2)}" rx="${f(14 * s)}" ry="${f(5.5 * s)}" fill="${SHADOW}" opacity=".22"/>`
+      + `<rect x="${f(px - 2 * s)}" y="${f(py - 12 * s)}" width="${f(4 * s)}" height="${f(12 * s)}" fill="#8b6a4c"/>`
+      + tri(15, 36, 11, '#eab03a') + tri(11, 54, 28, '#f7cf63');
   };
   const person = (x, y, shirt, hair, s = 1.25) => {
     const [px, py] = P(x, y);
-    return `<ellipse cx="${f(px)}" cy="${f(py + 1)}" rx="${f(7 * s)}" ry="${f(2.6 * s)}" fill="#5d8a3a" opacity=".25"/>`
-      + `<rect x="${f(px - 3.6 * s)}" y="${f(py - 9 * s)}" width="${f(2.8 * s)}" height="${f(9 * s)}" rx="1.2" fill="#5b7587"/>`
-      + `<rect x="${f(px + .8 * s)}" y="${f(py - 9 * s)}" width="${f(2.8 * s)}" height="${f(9 * s)}" rx="1.2" fill="#4a6577"/>`
+    return `<ellipse cx="${f(px)}" cy="${f(py + 1)}" rx="${f(7 * s)}" ry="${f(2.6 * s)}" fill="${SHADOW}" opacity=".25"/>`
+      + `<rect x="${f(px - 3.6 * s)}" y="${f(py - 9 * s)}" width="${f(2.8 * s)}" height="${f(9 * s)}" rx="1.2" fill="#6b5a66"/>`
+      + `<rect x="${f(px + .8 * s)}" y="${f(py - 9 * s)}" width="${f(2.8 * s)}" height="${f(9 * s)}" rx="1.2" fill="#574858"/>`
       + `<rect x="${f(px - 5 * s)}" y="${f(py - 22 * s)}" width="${f(10 * s)}" height="${f(14 * s)}" rx="${f(4 * s)}" fill="${shirt}"/>`
       + `<circle cx="${f(px)}" cy="${f(py - 27 * s)}" r="${f(4.6 * s)}" fill="#ffdcb8"/>`
       + `<path d="M${f(px - 4.9 * s)},${f(py - 27.4 * s)} A${f(4.9 * s)},${f(4.9 * s)} 0 0 1 ${f(px + 4.9 * s)},${f(py - 27.4 * s)} Z" fill="${hair}"/>`;
   };
   const dog = (x, y) => {
     const [px, py] = P(x, y);
-    return `<ellipse cx="${f(px)}" cy="${f(py - 6)}" rx="7.5" ry="4.2" fill="#a67c52"/><circle cx="${f(px + 7.5)}" cy="${f(py - 10)}" r="3.4" fill="#a67c52"/>`
-      + `<rect x="${f(px - 5.5)}" y="${f(py - 4)}" width="2" height="4.5" fill="#8d6842"/><rect x="${f(px + 3)}" y="${f(py - 4)}" width="2" height="4.5" fill="#8d6842"/>`;
+    return `<ellipse cx="${f(px)}" cy="${f(py - 6)}" rx="7.5" ry="4.2" fill="#a8744a"/><circle cx="${f(px + 7.5)}" cy="${f(py - 10)}" r="3.4" fill="#a8744a"/>`
+      + `<rect x="${f(px - 5.5)}" y="${f(py - 4)}" width="2" height="4.5" fill="#8d5f3a"/><rect x="${f(px + 3)}" y="${f(py - 4)}" width="2" height="4.5" fill="#8d5f3a"/>`;
   };
   const lamp = (x, y) => {
     const [px, py] = P(x, y);
-    return `<line x1="${f(px)}" y1="${f(py)}" x2="${f(px)}" y2="${f(py - 36)}" stroke="#7f8d9b" stroke-width="3" stroke-linecap="round"/>`
-      + `<circle cx="${f(px)}" cy="${f(py - 39)}" r="4.6" fill="#fff6cf" stroke="#7f8d9b" stroke-width="2"/>`;
+    return `<line x1="${f(px)}" y1="${f(py)}" x2="${f(px)}" y2="${f(py - 36)}" stroke="#9b7a5a" stroke-width="3" stroke-linecap="round"/>`
+      + `<circle cx="${f(px)}" cy="${f(py - 39)}" r="4.6" fill="#ffefb0" stroke="#9b7a5a" stroke-width="2"/>`;
   };
   const pole = (x, y) => {
     const a = P(x, y), b = P(x, y, 2.5);
-    return `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="#cdd7dc" stroke-width="3.4" stroke-linecap="round"/>`
-      + `<line x1="${f(b[0] - 10)}" y1="${f(b[1] + 3)}" x2="${f(b[0] + 10)}" y2="${f(b[1] - 3)}" stroke="#cdd7dc" stroke-width="2.8" stroke-linecap="round"/>`;
+    return `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="#d8c3a5" stroke-width="3.4" stroke-linecap="round"/>`
+      + `<line x1="${f(b[0] - 10)}" y1="${f(b[1] + 3)}" x2="${f(b[0] + 10)}" y2="${f(b[1] - 3)}" stroke="#d8c3a5" stroke-width="2.8" stroke-linecap="round"/>`;
   };
   const wire = (p, q) => {
     const a = P(p[0], p[1], 2.5), b = P(q[0], q[1], 2.5), sag = 10;
-    return [-4, 4].map(o => `<path d="M${f(a[0] + o)},${f(a[1] + o * .4)} Q${f((a[0] + b[0]) / 2)},${f((a[1] + b[1]) / 2 + sag)} ${f(b[0] + o)},${f(b[1] + o * .4)}" fill="none" stroke="#f2ad3f" stroke-width="1.7" opacity=".95"/>`).join('');
+    return [-4, 4].map(o => `<path d="M${f(a[0] + o)},${f(a[1] + o * .4)} Q${f((a[0] + b[0]) / 2)},${f((a[1] + b[1]) / 2 + sag)} ${f(b[0] + o)},${f(b[1] + o * .4)}" fill="none" stroke="#d9553b" stroke-width="1.7" opacity=".95"/>`).join('');
   };
   const parasol = (x, y, color) => {
     const [px, py] = P(x, y);
     return `<ellipse cx="${f(px)}" cy="${f(py)}" rx="11" ry="5" fill="#fff"/>`
-      + `<line x1="${f(px)}" y1="${f(py)}" x2="${f(px)}" y2="${f(py - 28)}" stroke="#9a8f7c" stroke-width="2.2"/>`
+      + `<line x1="${f(px)}" y1="${f(py)}" x2="${f(px)}" y2="${f(py - 28)}" stroke="#9b7a5a" stroke-width="2.2"/>`
       + `<path d="M${f(px - 20)},${f(py - 27)} Q${f(px)},${f(py - 44)} ${f(px + 20)},${f(py - 27)} Z" fill="${color}"/>`;
   };
   const car = (x, y, c) => {                      // x方向に走る車
-    const cab = { top: c.top, left: c.left, right: c.right };
     const [w1x, w1y] = P(x + .3, y + .62, .1), [w2x, w2y] = P(x + 1.0, y + .62, .1);
-    return shadow(x, y, 1.3, .62) + box(x, y, 1.3, .62, .3, c, .1) + box(x + .3, y + .04, .65, .54, .26, cab, .4)
-      + winL(x + .34, x + .9, y + .58, .44, .62, '#c5e7f2') + winR(x + .95, y + .1, y + .5, .44, .62, '#9fcfe0')
-      + `<ellipse cx="${f(w1x)}" cy="${f(w1y)}" rx="5" ry="5.6" fill="#47586a"/><ellipse cx="${f(w2x)}" cy="${f(w2y)}" rx="5" ry="5.6" fill="#47586a"/>`;
+    return shadow(x, y, 1.3, .62) + box(x, y, 1.3, .62, .3, c, .1) + box(x + .3, y + .04, .65, .54, .26, c, .4)
+      + winL(x + .34, x + .9, y + .58, .44, .62, '#d3ecf3') + winR(x + .95, y + .1, y + .5, .44, .62, '#a9d2df')
+      + `<ellipse cx="${f(w1x)}" cy="${f(w1y)}" rx="5" ry="5.6" fill="#4a3a3a"/><ellipse cx="${f(w2x)}" cy="${f(w2y)}" rx="5" ry="5.6" fill="#4a3a3a"/>`;
   };
   const truck = (x, y) => {                       // y方向に走る配達トラック
-    const cargo = { top: '#f4fbfc', left: '#e0f2f5', right: '#c8e6eb' }, cabc = { top: '#8fd0ea', left: '#6fb8d6', right: '#5aa3c2' };
+    const cabc = { top: '#f9b75f', left: '#f09a3a', right: '#d8842a' };
     const [a1x, a1y] = P(x + .7, y + .35, .1), [a2x, a2y] = P(x + .7, y + 1.25, .1);
-    return shadow(x, y, .7, 1.55) + box(x, y, .7, 1.1, .8, cargo, .1) + box(x, y + 1.1, .7, .45, .52, cabc, .1)
-      + winL(x + .08, x + .62, y + 1.55, .32, .52, '#d6f0f8') + winR(x + .7, y + 1.15, y + 1.5, .32, .5, '#bfe4f0')
-      + `<ellipse cx="${f(a1x)}" cy="${f(a1y)}" rx="5" ry="5.6" fill="#47586a"/><ellipse cx="${f(a2x)}" cy="${f(a2y)}" rx="5" ry="5.6" fill="#47586a"/>`;
+    return shadow(x, y, .7, 1.55) + box(x, y, .7, 1.1, .8, W, .1) + box(x, y + 1.1, .7, .45, .52, cabc, .1)
+      + winL(x + .08, x + .62, y + 1.55, .32, .52, '#d3ecf3') + winR(x + .7, y + 1.15, y + 1.5, .32, .5, '#bfe0ea')
+      + `<ellipse cx="${f(a1x)}" cy="${f(a1y)}" rx="5" ry="5.6" fill="#4a3a3a"/><ellipse cx="${f(a2x)}" cy="${f(a2y)}" rx="5" ry="5.6" fill="#4a3a3a"/>`;
   };
   const awning = (x, y, n, sw, c1, c2) => {         // 縞のひさし
     let s = '';
-    for (let i = 0; i < n; i++) {
-      const c = i % 2 ? c2 : c1;
-      s += box(x + i * sw, y, sw, .38, .16, { top: c.top, left: c.left, right: c.right }, 1.22);
-    }
+    for (let i = 0; i < n; i++) s += box(x + i * sw, y, sw, .38, .16, i % 2 ? c2 : c1, 1.22);
     return s;
   };
-  const GREEN_STRIPE = { top: '#7fc472', left: '#62ad58', right: '#4d9645' };
-  const CREAM_STRIPE = { top: '#fffaf0', left: '#f3ead6', right: '#e4d9bf' };
-  const ORANGE_STRIPE = { top: '#ffc766', left: '#f0ac3f', right: '#d99530' };
+  const RED_STRIPE = { top: '#ee7a5c', left: '#d9553b', right: '#bf452d' };
+  const CREAM_STRIPE = { top: '#fffaf0', left: '#f6ecd6', right: '#e8dabc' };
+  const YELLOW_STRIPE = { top: '#ffd45e', left: '#f4b92e', right: '#dca020' };
   const blob = (cx, cy, R, seed) => {
     const a = [];
     for (let i = 0; i < 30; i++) {
@@ -320,59 +323,60 @@ function buildTown() {
   };
 
   // ===== 地面・道路・池 =====
-  ground(`<rect x="-400" y="-400" width="1800" height="1800" fill="#d9ecbd"/>`);
-  ground(soft(rect(.4, .4, 3.6, 3.6), '#e6f3d1', 16));
-  ground(soft(rect(5.6, .4, 9.8, 3.6), '#e6f3d1', 16));
-  ground(soft(rect(.4, 5.5, 3.6, 9.6), '#d6eaec', 16));
-  ground(soft(rect(5.5, 5.5, 8.5, 8.4), '#d6eaec', 16));
-  ground(soft(rect(8.9, 5.5, 11, 9.6), '#e6f3d1', 16));
-  ground(poly(rect(-3, 3.75, 14, 5.25), '#efe7d1'));
-  ground(poly(rect(3.75, -3, 5.25, 14), '#efe7d1'));
-  ground(poly(rect(-3, 3.9, 14, 5.1), '#f8f2e2'));
-  ground(poly(rect(3.9, -3, 5.1, 14), '#f8f2e2'));
-  const dash = (a, b) => `<polyline points="${pts([a, b])}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="9 9" opacity=".9"/>`;
+  ground(`<rect x="-400" y="-400" width="1800" height="1800" fill="#f8dfae"/>`);
+  ground(soft(rect(.4, .4, 3.6, 3.6), '#fdeccb', 16));
+  ground(soft(rect(5.6, .4, 9.8, 3.6), '#fdeccb', 16));
+  ground(soft(rect(.4, 5.5, 3.6, 9.6), '#fbd7bd', 16));
+  ground(soft(rect(5.5, 5.5, 8.5, 8.4), '#fbd7bd', 16));
+  ground(soft(rect(8.9, 5.5, 11, 9.6), '#fdeccb', 16));
+  ground(poly(rect(-3, 3.75, 14, 5.25), '#f1d9a8'));
+  ground(poly(rect(3.75, -3, 5.25, 14), '#f1d9a8'));
+  ground(poly(rect(-3, 3.9, 14, 5.1), '#fff7e8'));
+  ground(poly(rect(3.9, -3, 5.1, 14), '#fff7e8'));
+  const dash = (a, b) => `<polyline points="${pts([a, b])}" fill="none" stroke="#f1d9a8" stroke-width="2.4" stroke-dasharray="9 9"/>`;
   ground(dash(P(-3, 4.5), P(3.6, 4.5)) + dash(P(5.4, 4.5), P(14, 4.5)) + dash(P(4.5, -3), P(4.5, 3.6)) + dash(P(4.5, 5.4), P(4.5, 14)));
-  ground(soft(blob(1.9, 1.9, 1.15, 1), '#8fcadf', 10));
-  ground(poly(blob(1.7, 1.75, .6, 2), '#aadbea'));
+  ground(soft(blob(1.9, 1.9, 1.15, 1), '#a9dbe6', 10));
+  ground(poly(blob(1.7, 1.75, .6, 2), '#c8eaf1'));
 
   // ===== レストラン（中央） =====
   const R = { x: 5.4, y: 5.4, w: 2.2, d: 2.0, h: 1.7 };
-  const RC = { top: '#62abc9', left: '#e3f3f6', right: '#c9e6ec' };
+  const RC = { top: '#c9441f', left: '#fff1dc', right: '#f6d9b0' };
   add(R.x + R.w / 2 + R.y + R.d / 2,
     shadow(R.x, R.y, R.w, R.d) + box(R.x, R.y, R.w, R.d, R.h, RC)
-    + poly([P(R.x + .18, R.y + .18, R.h), P(R.x + R.w - .18, R.y + .18, R.h), P(R.x + R.w - .18, R.y + R.d - .18, R.h), P(R.x + .18, R.y + R.d - .18, R.h)], '#82c4dd')
+    + poly([P(R.x + .18, R.y + .18, R.h), P(R.x + R.w - .18, R.y + .18, R.h), P(R.x + R.w - .18, R.y + R.d - .18, R.h), P(R.x + .18, R.y + R.d - .18, R.h)], '#e8704f')
     + winL(R.x + .2, R.x + 1.0, R.y + R.d, .45, 1.2) + winL(R.x + 1.75, R.x + 2.05, R.y + R.d, .45, 1.2)
     + poly([P(R.x + 1.2, R.y + R.d, 0), P(R.x + 1.62, R.y + R.d, 0), P(R.x + 1.62, R.y + R.d, 1.05), P(R.x + 1.2, R.y + R.d, 1.05)], WOOD)
     + winR(R.x + R.w, R.y + .25, R.y + .85, .55, 1.25) + winR(R.x + R.w, R.y + 1.1, R.y + 1.7, .55, 1.25)
-    + awning(R.x + .1, R.y + R.d, 6, .33, GREEN_STRIPE, CREAM_STRIPE)
+    + awning(R.x + .1, R.y + R.d, 6, .33, RED_STRIPE, CREAM_STRIPE)
     + box(7.0, 5.7, .35, .35, .6, W, R.h));
   const [sx, sy] = P(7.18, 5.88, R.h + .6);
   add(12.8, `<circle cx="${f(sx)}" cy="${f(sy - 10)}" r="7" fill="#fff" opacity=".9"/><circle cx="${f(sx + 7)}" cy="${f(sy - 22)}" r="9" fill="#fff" opacity=".8"/><circle cx="${f(sx + 2)}" cy="${f(sy - 36)}" r="6" fill="#fff" opacity=".7"/>`);
 
   // ===== カフェ（左） =====
   const CF = { x: .7, y: 5.9, w: 2.3, d: 2.0, h: 1.35 };
-  const CC = { top: '#8fd072', left: W.left, right: W.right };
+  const CC = { top: '#f29a3f', left: W.left, right: W.right };
   add(CF.x + CF.w / 2 + CF.y + CF.d / 2,
     shadow(CF.x, CF.y, CF.w, CF.d) + box(CF.x, CF.y, CF.w, CF.d, CF.h, CC)
-    + poly([P(CF.x + .18, CF.y + .18, CF.h), P(CF.x + CF.w - .18, CF.y + .18, CF.h), P(CF.x + CF.w - .18, CF.y + CF.d - .18, CF.h), P(CF.x + .18, CF.y + CF.d - .18, CF.h)], '#a5de8a')
+    + poly([P(CF.x + .18, CF.y + .18, CF.h), P(CF.x + CF.w - .18, CF.y + .18, CF.h), P(CF.x + CF.w - .18, CF.y + CF.d - .18, CF.h), P(CF.x + .18, CF.y + CF.d - .18, CF.h)], '#f9bd6a')
     + winL(CF.x + .2, CF.x + 1.0, CF.y + CF.d, .4, 1.05) + winL(CF.x + 1.5, CF.x + 2.1, CF.y + CF.d, .4, 1.05)
     + winR(CF.x + CF.w, CF.y + .3, CF.y + .9, .45, 1.05) + winR(CF.x + CF.w, CF.y + 1.15, CF.y + 1.7, .45, 1.05)
-    + awning(CF.x + .1, CF.y + CF.d, 6, .33, ORANGE_STRIPE, CREAM_STRIPE));
-  add(9.4, parasol(1.3, 8.6, '#ffc766') + parasol(2.7, 8.8, '#8fd0ea'));
+    + awning(CF.x + .1, CF.y + CF.d, 6, .33, YELLOW_STRIPE, CREAM_STRIPE));
+  add(9.4, parasol(1.3, 8.6, '#ffd45e') + parasol(2.7, 8.8, '#f08a6b'));
 
   // ===== 家（右奥） =====
-  const roofB = { back: '#8ccbe0', front: '#6fb7d3' }, roofC = { back: '#a7d98a', front: '#8cc96d' };
-  add(5.7 + .95 + .7 + .8, house(5.7, .7, 1.9, 1.6, 1.2, .9, roofB));
-  add(7.7 + .95 + 1.3 + .8, house(7.7, 1.3, 1.9, 1.6, 1.2, .9, roofC));
-  add(6.2 + .9 + 2.6 + .55, house(6.2, 2.6, 1.8, 1.1, 1.0, .8, roofB));
+  const roofR = { back: '#ee8a62', front: '#d9553b' }, roofY = { back: '#fbd070', front: '#f2ac3a' };
+  add(5.7 + .95 + .7 + .8, house(5.7, .7, 1.9, 1.6, 1.2, .9, roofR));
+  add(7.7 + .95 + 1.3 + .8, house(7.7, 1.3, 1.9, 1.6, 1.2, .9, roofY));
+  add(6.2 + .9 + 2.6 + .55, house(6.2, 2.6, 1.8, 1.1, 1.0, .8, roofR));
 
   // ===== 木々 =====
-  [[.6, .8], [3.4, .6], [.6, 3.2], [3.3, 3.3], [9.3, .6], [9.3, 3.2, .9], [3.4, 8.4], [.5, 5.1, .9], [9.2, 6.3], [8.4, 8.6]].forEach(([x, y, s]) => add(x + y, tree(x, y, (s || 1) * 1.1)));
+  [[.6, .8, 1, 0], [3.4, .6, 1, 1], [.6, 3.2, 1, 2], [3.3, 3.3, 1, 0], [9.3, .6, 1, 1], [9.3, 3.2, .9, 0], [3.4, 8.4, 1, 1], [.5, 5.1, .9, 2], [9.2, 6.3, 1, 0], [8.4, 8.6, 1, 2]]
+    .forEach(([x, y, s, k]) => add(x + y, tree(x, y, s * 1.1, k)));
   [[2.3, .4], [.5, 2.0], [3.5, 2.0, .9], [5.6, 8.5], [9.5, 8.0], [10.2, 4.5, .9], [3.3, 9.5]].forEach(([x, y, s]) => add(x + y, pine(x, y, s || 1)));
 
   // ===== 乗り物 =====
-  add(6.4 + .65 + 4.2 + .31, car(6.4, 4.2, { top: '#8fd988', left: '#62b65d', right: '#4c9f48' }));
-  add(.4 + .65 + 4.2 + .31, car(.4, 4.2, { top: '#9bd2ea', left: '#6fb7d6', right: '#59a1c1' }));
+  add(6.4 + .65 + 4.2 + .31, car(6.4, 4.2, { top: '#f58a6b', left: '#e0583a', right: '#c64529' }));
+  add(.4 + .65 + 4.2 + .31, car(.4, 4.2, { top: '#ffe083', left: '#f6c244', right: '#dea62e' }));
   add(4.2 + .35 + 8.2 + .78, truck(4.2, 7.4));
 
   // ===== 街灯・電柱・ベンチ・人 =====
@@ -380,18 +384,18 @@ function buildTown() {
   add(1.2 + 3.78, pole(1.2, 3.78)); add(5.6 + 3.78, pole(5.6, 3.78)); add(9.4 + 3.78, pole(9.4, 3.78));
   add(5.6 + 3.78 + .5, wire([1.2, 3.78], [5.6, 3.78]) + wire([5.6, 3.78], [9.4, 3.78]));
   add(3.1 + .1 + 1.6 + .45, box(3.1, 1.6, .25, .9, .22, { top: '#e8c68e', left: '#c9a56b', right: '#b48e55' }));
-  add(6.55 + 7.95 + .2, person(6.55, 7.95, '#79b864', '#e9993a'));
-  add(2.3 + 4.6 + .2, person(2.3, 4.62, '#6fb7d3', '#5b4636'));
-  add(2.9 + 4.4 + .2, person(2.9, 4.42, '#f08a7a', '#2f2a26'));
-  add(3.3 + 2.2 + .2, person(3.35, 2.25, '#79b864', '#e9993a'));
-  add(1.3 + 8.9 + .2, person(1.3, 8.95, '#f2c14e', '#5b4636'));
-  add(7.0 + 3.55 + .2, person(7.0, 3.6, '#4f7f9e', '#e9993a') + dog(7.55, 3.65));
+  add(6.55 + 7.95 + .2, person(6.55, 7.95, '#e9704a', '#3b2a20'));
+  add(2.3 + 4.6 + .2, person(2.3, 4.62, '#4f8fae', '#5b3a29'));
+  add(2.9 + 4.4 + .2, person(2.9, 4.42, '#f2c14e', '#2f2a26'));
+  add(3.3 + 2.2 + .2, person(3.35, 2.25, '#e9704a', '#b8602a'));
+  add(1.3 + 8.9 + .2, person(1.3, 8.95, '#f2c14e', '#5b3a29'));
+  add(7.0 + 3.55 + .2, person(7.0, 3.6, '#4f8fae', '#b8602a') + dog(7.55, 3.65));
 
   // ===== 地図ピン・鳥（常に前面） =====
   const [px, py] = P(6.5, 6.4, R.h);
-  add(1e4, `<ellipse cx="${f(px)}" cy="${f(py - 2)}" rx="16" ry="6" fill="#2f6f8f" opacity=".25"/>`
-    + `<g transform="translate(${f(px)},${f(py - 16)})"><g class="bob"><path d="M0,0 C-5,-12 -24,-26 -24,-46 A24,24 0 1 1 24,-46 C24,-26 5,-12 0,0 Z" fill="#2d8540"/><circle cx="0" cy="-46" r="10" fill="#fff"/><circle cx="0" cy="-46" r="4.4" fill="#f3b146"/></g></g>`);
-  const bird = (x, y) => `<path d="M0,0 q4.5,-6 9,0 q4.5,-6 9,0" transform="translate(${x},${y})" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+  add(1e4, `<ellipse cx="${f(px)}" cy="${f(py - 2)}" rx="16" ry="6" fill="#8a3b0a" opacity=".25"/>`
+    + `<g transform="translate(${f(px)},${f(py - 16)})"><g class="bob"><path d="M0,0 C-5,-12 -24,-26 -24,-46 A24,24 0 1 1 24,-46 C24,-26 5,-12 0,0 Z" fill="#c9441f"/><circle cx="0" cy="-46" r="10" fill="#fff"/><circle cx="0" cy="-46" r="4.4" fill="#ffc531"/></g></g>`);
+  const bird = (x, y) => `<path d="M0,0 q4.5,-6 9,0 q4.5,-6 9,0" transform="translate(${x},${y})" stroke="#fffdf6" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
   add(1e4 + 1, bird(575, 190) + bird(600, 172) + bird(330, 200) + bird(655, 235));
 
   items.sort((a, b) => a.d - b.d);
@@ -537,6 +541,9 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const layer = L.layerGroup().addTo(map);
 let youMarker = null, circle = null;
 const markers = new Map();
+const pinStyle = sel => sel
+  ? { radius: 11, fillColor: css('--pin-sel'), color: css('--pin-ring'), weight: 3 }
+  : { radius: 7, fillColor: css('--pin'), color: '#fff', weight: 2 };
 
 function drawMap(shown) {
   layer.clearLayers();
@@ -546,7 +553,7 @@ function drawMap(shown) {
   youMarker = L.circleMarker([state.lat, state.lon], { radius: 8, color: '#fff', weight: 3, fillColor: css('--you'), fillOpacity: 1 }).addTo(map).bindTooltip('現在地');
   circle = L.circle([state.lat, state.lon], { radius: state.radius, color: css('--you'), weight: 1.5, fillOpacity: 0.06 }).addTo(map);
   for (const p of shown) {
-    const m = L.circleMarker([p.lat, p.lon], { radius: 7, color: '#fff', weight: 2, fillColor: css('--pin'), fillOpacity: 0.95 });
+    const m = L.circleMarker([p.lat, p.lon], { ...pinStyle(false), fillOpacity: 0.95 });
     m.bindTooltip(p.name);
     m.on('click', () => select(p.id, true));
     m.addTo(layer);
@@ -602,7 +609,7 @@ function card(p) {
 function markSelected(id) {
   document.querySelectorAll('.card.selected').forEach(e => e.classList.remove('selected'));
   document.getElementById('c-' + id)?.classList.add('selected');
-  for (const [mid, m] of markers) m.setStyle(mid === id ? { radius: 11, fillColor: css('--pin-sel') } : { radius: 7, fillColor: css('--pin') });
+  for (const [mid, m] of markers) m.setStyle(pinStyle(mid === id));
 }
 
 function select(id, scrollToCard) {
