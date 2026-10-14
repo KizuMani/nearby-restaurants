@@ -31,8 +31,12 @@
     </section>
 
     <section class="field">
-      <label for="birthday">生年月日</label>
-      <input id="birthday" type="date" min="1900-01-01">
+      <p class="lab" id="birthdayLabel">生年月日</p>
+      <div class="date-selects" role="group" aria-labelledby="birthdayLabel">
+        <select id="bYear" aria-label="生まれた年"></select>
+        <select id="bMonth" aria-label="生まれた月"></select>
+        <select id="bDay" aria-label="生まれた日"></select>
+      </div>
       <p class="hint" id="birthdayNote">誕生日の当日は、特別な日向けの並びになります。20歳未満の方には、居酒屋・バーを表示しません。</p>
     </section>
 

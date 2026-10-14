@@ -200,3 +200,10 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; }
 .saved { margin-top: 16px; text-align: center; justify-items: center; gap: 12px; }
 .saved p { margin: 0; font-weight: 700; }
 .linkbtn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 8px 28px; border-radius: 999px; background: var(--red); color: #fff; font-weight: 700; text-decoration: none; }
+
+/* 生年月日（年・月・日を別々に選ぶ） */
+.date-selects { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.date-selects select {
+  width: 100%; min-width: 0; min-height: 46px; padding: 8px 10px; font-size: 16px; font-weight: 500;
+  background: var(--cream); border-color: var(--line); color: var(--text);
+}
