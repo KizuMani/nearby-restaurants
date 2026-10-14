@@ -3,91 +3,181 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://cdnjs.cloudflare.com; connect-src https://overpass-api.de https://overpass.private.coffee https://overpass.kumi.systems https://nominatim.openstreetmap.org; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://tile.openstreetmap.org https://cdnjs.cloudflare.com; connect-src https://overpass-api.de https://overpass.private.coffee https://overpass.kumi.systems https://nominatim.openstreetmap.org; base-uri 'none'; form-action 'none'">
 <title>近くのごはん</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8D%9C%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%239bd8f7'/%3E%3Cpath d='M16 6a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z' fill='%23fff'/%3E%3Ccircle cx='16' cy='13' r='2.6' fill='%2339b9a0'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
+/* パステルの水色とミントを基調にした、明るい一画面構成：上部の帯の上にコントロールのカードを重ね、その下に地図と一覧を並べる */
 :root {
-  --bg: #faf8f5; --card: #fff; --text: #222; --sub: #6b6b6b; --line: #e6e1da;
-  --accent: #d9480f; --accent-soft: #fff0e8; --ok: #2b8a3e; --ng: #868e96;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #161514; --card: #201f1d; --text: #eee; --sub: #a0a0a0; --line: #33312e;
-    --accent: #ff8a5b; --accent-soft: #3a2a22; --ok: #69db7c; --ng: #868e96;
-  }
+  --font: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic UI", Meiryo, sans-serif;
+  --bg: #f3fbf9;          /* ごく薄いミント */
+  --card: #ffffff;
+  --text: #1d3b4f;        /* 深い青みのネイビー */
+  --sub: #5d7888;
+  --line: #d8ebf0;
+  --sky: #cdeafc;         /* 帯のグラデーション（水色） */
+  --mint: #d2f5e3;        /* 帯のグラデーション（ミント） */
+  --accent: #16709a;      /* リンク・選択状態の青 */
+  --accent-soft: #e1f2fb;
+  --accent-line: #8fcbe9;
+  --btn-a: #9bd8f7;       /* ボタンのグラデーション */
+  --btn-b: #9be9c6;
+  --btn-text: #0e3347;
+  --ok: #1b7a50;
+  --ok-soft: #dff6e9;
+  --ng: #66808e;
+  --ng-soft: #edf3f6;
+  --pin: #2fb59a;         /* 地図のお店ピン */
+  --pin-sel: #ff9f7a;     /* 選択中のピン */
+  --you: #3b9de0;
+  --shadow: 0 8px 22px rgba(60, 130, 160, .13);
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0; background: var(--bg); color: var(--text);
-  font: 15px/1.5 system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  font: 15px/1.6 var(--font);
 }
-header { padding: 14px 16px 8px; }
-h1 { margin: 0 0 10px; font-size: 20px; }
-.row { display: flex; gap: 8px; margin-bottom: 8px; }
+.wrap { max-width: 720px; margin: 0 auto; padding-inline: 16px; }
+
+/* 上部の帯 */
+.hero {
+  padding-block: 30px 64px;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(255,255,255,.75) 0 58px, transparent 59px),
+    radial-gradient(circle at 6% 100%, rgba(255,255,255,.55) 0 84px, transparent 85px),
+    linear-gradient(155deg, var(--sky), var(--mint));
+}
+h1 { margin: 0; font-size: 26px; letter-spacing: .04em; line-height: 1.3; }
+.lead { margin: 6px 0 0; color: var(--sub); font-size: 14px; }
+
+/* コントロールのカード */
+.panel {
+  margin-top: -40px; padding: 14px; display: grid; gap: 10px;
+  background: var(--card); border-radius: 22px; box-shadow: var(--shadow);
+  position: relative;
+}
+.row { display: flex; gap: 8px; align-items: center; }
 .row > * { min-width: 0; }
 button, select, input[type=search] {
-  font: inherit; color: inherit; border: 1px solid var(--line); border-radius: 10px;
-  background: var(--card); padding: 9px 12px;
+  font: inherit; color: inherit; min-height: 44px;
+  border: 1.5px solid var(--line); border-radius: 999px; background: var(--card);
+  padding: 8px 16px;
 }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-button:disabled { opacity: .5; }
-input[type=search] { flex: 1; }
-.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
-.chip { white-space: nowrap; border-radius: 999px; padding: 6px 12px; font-size: 14px; }
-.chip[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-label.toggle { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--sub); white-space: nowrap; }
-#map { height: 260px; border-block: 1px solid var(--line); }
-#status { padding: 10px 16px 4px; color: var(--sub); font-size: 13px; min-height: 28px; }
-#status.error { color: #c92a2a; }
-#list { list-style: none; margin: 0; padding: 4px 16px 24px; display: grid; gap: 10px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; scroll-margin-top: 8px; }
-.card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-.top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-.name { font-weight: 700; font-size: 16px; overflow-wrap: anywhere; }
-.dist { color: var(--sub); font-size: 13px; white-space: nowrap; }
-.meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; font-size: 12px; }
-.tag { border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; color: var(--sub); }
-.tag.open { color: var(--ok); border-color: var(--ok); }
-.tag.closed { color: var(--ng); }
-.hours { font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
-.links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; font-size: 14px; }
-.links a { color: var(--accent); text-decoration: none; font-weight: 600; }
-#more { display: block; margin: 0 auto 28px; }
-footer { padding: 0 16px 28px; color: var(--sub); font-size: 12px; }
+button { cursor: pointer; transition: transform .12s ease, box-shadow .12s ease; }
+button:active { transform: scale(.97); }
+button:disabled { opacity: .45; cursor: default; }
+:focus-visible { outline: 3px solid var(--accent-line); outline-offset: 2px; }
+.primary {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 0; font-weight: 700; color: var(--btn-text);
+  background: linear-gradient(120deg, var(--btn-a), var(--btn-b));
+  box-shadow: 0 4px 12px rgba(80, 170, 200, .28);
+}
+.primary svg { width: 18px; height: 18px; flex: none; }
+select { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); font-weight: 700; }
+input[type=search] { flex: 1; background: var(--bg); }
+input[type=search]::placeholder { color: #8aa3b0; }
+.soft { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); font-weight: 700; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-block: 2px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { white-space: nowrap; min-height: 38px; padding: 6px 16px; font-size: 14px; }
+.chip[aria-pressed=true] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.tools { justify-content: space-between; }
+label.toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--sub); white-space: nowrap; min-height: 44px; }
+label.toggle input { width: 20px; height: 20px; accent-color: #2fb59a; }
+#random { background: var(--mint); border-color: #a9e3c8; color: var(--ok); font-weight: 700; }
+
+/* 地図 */
+#map {
+  height: 280px; margin-top: 16px; border-radius: 22px; overflow: hidden;
+  box-shadow: var(--shadow); border: 1px solid var(--line); z-index: 0;
+}
+.leaflet-tile-pane { filter: saturate(.7) brightness(1.04) contrast(.96); }
+.leaflet-container { font-family: var(--font); background: #e9f5f6; }
+
+#status { padding: 14px 4px 8px; color: var(--sub); font-size: 13px; min-height: 40px; }
+#status.error { color: #b83a3a; }
+
+/* お店の一覧 */
+#list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.card {
+  background: var(--card); border: 1.5px solid transparent; border-radius: 20px;
+  padding: 14px 16px; box-shadow: 0 3px 14px rgba(60, 130, 160, .1);
+  scroll-margin-top: 12px; cursor: pointer;
+}
+.card.selected { border-color: var(--pin); box-shadow: 0 0 0 4px rgba(47, 181, 154, .16); }
+.top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.name { font-weight: 700; font-size: 17px; line-height: 1.4; overflow-wrap: anywhere; }
+.dist {
+  flex: none; padding: 1px 10px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  background: var(--accent-soft); color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 12px; }
+.tag { border-radius: 999px; padding: 2px 10px; background: var(--ng-soft); color: var(--ng); }
+.tag.genre { background: var(--accent-soft); color: var(--accent); }
+.tag.open { background: var(--ok-soft); color: var(--ok); font-weight: 700; }
+.tag.open::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
+.hours { margin-top: 6px; font-size: 12px; color: var(--sub); overflow-wrap: anywhere; }
+.links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.links a {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 4px 14px;
+  border-radius: 999px; font-size: 14px; font-weight: 700; text-decoration: none;
+  color: var(--accent); background: var(--accent-soft);
+}
+.links a:first-child { color: var(--btn-text); background: linear-gradient(120deg, var(--btn-a), var(--btn-b)); }
+
+#more { display: block; margin: 18px auto 0; min-width: 160px; }
+footer { padding-block: 28px 40px; color: var(--sub); font-size: 12px; line-height: 1.7; }
 footer a { color: inherit; }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }
 </style>
 </head>
 <body>
-<header>
-  <h1>近くのごはん</h1>
-  <div class="row">
-    <button id="locate" class="primary">現在地から探す</button>
-    <select id="radius" aria-label="検索範囲">
-      <option value="300">300m</option>
-      <option value="500" selected>500m</option>
-      <option value="1000">1km</option>
-      <option value="2000">2km</option>
-    </select>
-  </div>
-  <form id="searchForm" class="row">
-    <input id="place" type="search" placeholder="駅名・地名で探す（例：渋谷駅）" aria-label="場所を検索">
-    <button type="submit">検索</button>
-  </form>
-  <div class="chips" id="chips"></div>
-  <div class="row" style="margin-top:6px; justify-content:space-between; align-items:center;">
-    <label class="toggle"><input type="checkbox" id="openOnly"> 営業中のみ</label>
-    <button id="random" disabled>今日はここ！</button>
+<header class="hero">
+  <div class="wrap">
+    <h1>近くのごはん</h1>
+    <p class="lead">いまいる場所から、歩いて行けるお店をさがそう</p>
   </div>
 </header>
 
-<div id="map"></div>
-<div id="status">「現在地から探す」を押すか、場所を入力してください。</div>
-<ul id="list"></ul>
-<button id="more" hidden>もっと見る</button>
+<main class="wrap">
+  <section class="panel" aria-label="検索条件">
+    <div class="row">
+      <button id="locate" class="primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="8"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+        現在地から探す
+      </button>
+      <select id="radius" aria-label="検索範囲">
+        <option value="300">300m</option>
+        <option value="500" selected>500m</option>
+        <option value="1000">1km</option>
+        <option value="2000">2km</option>
+      </select>
+    </div>
+    <form id="searchForm" class="row">
+      <input id="place" type="search" placeholder="駅名・地名で探す（例：渋谷駅）" aria-label="場所を検索">
+      <button type="submit" class="soft">検索</button>
+    </form>
+    <div class="chips" id="chips"></div>
+    <div class="row tools">
+      <label class="toggle"><input type="checkbox" id="openOnly"> 営業中のみ</label>
+      <button id="random" disabled>今日はここ！</button>
+    </div>
+  </section>
 
-<footer>
+  <div id="map"></div>
+  <div id="status">「現在地から探す」を押すか、駅名や地名を入力してください。</div>
+  <ul id="list"></ul>
+  <button id="more" hidden>もっと見る</button>
+</main>
+
+<footer class="wrap">
   お店のデータ：<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>。
   評価・口コミのデータはありません。「おすすめ順」は営業中か・距離・登録情報の充実度で並べています。営業時間は未登録・古い場合があります。
 </footer>
@@ -128,6 +218,7 @@ const CUISINE_JA = {
 
 const state = { lat: null, lon: null, radius: 500, genre: 'all', openOnly: false, places: [], limit: PAGE, selectedId: null };
 const $ = s => document.querySelector(s);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 // ---------- 小さなユーティリティ ----------
 function h(tag, props = {}, ...kids) {
@@ -240,10 +331,10 @@ function drawMap(shown) {
   markers.clear();
   if (youMarker) youMarker.remove();
   if (circle) circle.remove();
-  youMarker = L.circleMarker([state.lat, state.lon], { radius: 8, color: '#fff', weight: 3, fillColor: '#1c7ed6', fillOpacity: 1 }).addTo(map).bindTooltip('現在地');
-  circle = L.circle([state.lat, state.lon], { radius: state.radius, color: '#1c7ed6', weight: 1, fillOpacity: 0.04 }).addTo(map);
+  youMarker = L.circleMarker([state.lat, state.lon], { radius: 8, color: '#fff', weight: 3, fillColor: css('--you'), fillOpacity: 1 }).addTo(map).bindTooltip('現在地');
+  circle = L.circle([state.lat, state.lon], { radius: state.radius, color: css('--you'), weight: 1.5, fillOpacity: 0.06 }).addTo(map);
   for (const p of shown) {
-    const m = L.circleMarker([p.lat, p.lon], { radius: 7, color: '#fff', weight: 2, fillColor: '#d9480f', fillOpacity: 0.95 });
+    const m = L.circleMarker([p.lat, p.lon], { radius: 7, color: '#fff', weight: 2, fillColor: css('--pin'), fillOpacity: 0.95 });
     m.bindTooltip(p.name);
     m.on('click', () => select(p.id, true));
     m.addTo(layer);
@@ -286,9 +377,9 @@ function card(p) {
       h('span', { class: 'name' }, p.name),
       h('span', { class: 'dist' }, fmtDist(p.dist))),
     h('div', { class: 'meta' },
-      h('span', { class: 'tag' }, p.genreLabel),
+      h('span', { class: 'tag genre' }, p.genreLabel),
       p.open === true && h('span', { class: 'tag open' }, '営業中'),
-      p.open === false && h('span', { class: 'tag closed' }, '営業時間外')),
+      p.open === false && h('span', { class: 'tag' }, '営業時間外')),
     p.hours && h('div', { class: 'hours' }, p.hours),
     h('div', { class: 'links' },
       h('a', { href: gmap, target: '_blank', rel: 'noopener' }, '地図で開く'),
@@ -299,7 +390,7 @@ function card(p) {
 function markSelected(id) {
   document.querySelectorAll('.card.selected').forEach(e => e.classList.remove('selected'));
   document.getElementById('c-' + id)?.classList.add('selected');
-  for (const [mid, m] of markers) m.setStyle(mid === id ? { radius: 11, fillColor: '#f59f00' } : { radius: 7, fillColor: '#d9480f' });
+  for (const [mid, m] of markers) m.setStyle(mid === id ? { radius: 11, fillColor: css('--pin-sel') } : { radius: 7, fillColor: css('--pin') });
 }
 
 function select(id, scrollToCard) {
