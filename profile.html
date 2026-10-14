@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'">
+<title>プロフィール設定</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23f8dfae'/%3E%3Cpath d='M16 6a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z' fill='%23c9441f'/%3E%3Ccircle cx='16' cy='13' r='2.8' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="hero wrap">
+  <div class="topbar">
+    <a class="back" href="index.html">‹ お店をさがす</a>
+  </div>
+  <h1 class="page-title">プロフィール設定</h1>
+  <p class="lead">あなたに合うお店を選ぶための情報です。入力した内容はこの端末の中にだけ保存され、インターネットには送信されません。</p>
+  <div class="scene banner" data-scene="banner" role="img" aria-label="オレンジや赤、黄色であたたかく描いた街並みのイラスト"></div>
+</header>
+
+<main class="wrap">
+  <form id="profileForm" class="panel form" novalidate>
+    <section class="field">
+      <label for="name">ユーザーネーム<span class="req">必須</span></label>
+      <input id="name" type="text" maxlength="20" autocomplete="off" placeholder="例：ゆうこ">
+      <p class="hint">ニックネームでかまいません。メールアドレスやパスワードの登録は不要です。</p>
+    </section>
+
+    <section class="field">
+      <label for="birthday">生年月日</label>
+      <input id="birthday" type="date" min="1900-01-01">
+      <p class="hint" id="birthdayNote">誕生日の当日は、特別な日向けの並びになります。20歳未満の方には、居酒屋・バーを表示しません。</p>
+    </section>
+
+    <div class="field" role="group" aria-labelledby="genreLabel">
+      <p class="lab" id="genreLabel">好きなジャンル<span class="count" id="genreCount">0/3</span></p>
+      <div class="checks" id="genres"></div>
+      <p class="hint">3つまで選べます。</p>
+    </div>
+
+    <div class="field" role="radiogroup" aria-labelledby="budgetLabel">
+      <p class="lab" id="budgetLabel">普段使えるごはん代</p>
+      <div class="radios" id="budgets"></div>
+      <p class="hint">お店の価格は、ジャンルや店名からの推定の目安です。</p>
+    </div>
+
+    <p class="hint note-mood">「今の気分」は、お店を探す画面で入力できます。</p>
+
+    <p class="error" id="formError" role="alert" hidden></p>
+    <div class="actions">
+      <button type="submit" class="primary big">保存する</button>
+      <button type="button" id="deleteBtn" class="danger">プロフィールを削除</button>
+    </div>
+  </form>
+
+  <section class="panel saved" id="saved" hidden>
+    <p id="savedText"></p>
+    <a class="linkbtn" href="index.html">お店をさがす</a>
+  </section>
+</main>
+
+<footer class="wrap">
+  プロフィールは、この端末のブラウザの中にだけ保存します。ブラウザのデータを消すと、プロフィールも消えます。別の端末には引き継がれません。
+</footer>
+
+<script src="shared.js"></script>
+<script src="scene.js"></script>
+<script src="profile.js"></script>
+</body>
+</html>
