@@ -2,14 +2,22 @@
 
 // ---------- 検索アプリ本体 ----------
 
-// 無料の公開サーバーは混み合うことがあるため、本家を再試行したあとミラーへ切り替える
+// お店のデータは、OpenStreetMap の無料の公開サーバー（Overpass）から取る。止まっていたり混んでいたりすることがあるため、
+//  ・使えるサーバーを複数並べ、遅いときは待たずに次のサーバーにも同時に聞く（先に答えたほうを使う）
+//  ・取れた結果はこの端末に一時保存し、同じ場所の再検索では聞かない。通信に失敗したときは、保存してあるデータで代用する
+// 2026-10 の測定では、private.coffee と kumi は応答がなく、本家系は重い検索（ジャンルをまとめて指定する書き方）が 504 で失敗した。
 const OVERPASS = [
+  'https://overpass.openstreetmap.fr/api/interpreter',
+  'https://lz4.overpass-api.de/api/interpreter',
   'https://overpass-api.de/api/interpreter',
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
+  'https://z.overpass-api.de/api/interpreter',
 ];
-const TIMEOUT_MS = 15000;
+const ATTEMPT_MS = 14000;                         // 1つのサーバーを待つ上限
+const HEDGE_MS = 4000;                            // これだけ待っても答えがなければ、次のサーバーにも同時に聞く
+const CACHE_PREFIX = 'nearbyGohan.places.v1.';
+const CACHE_FRESH_MS = 30 * 60 * 1000;            // 30分以内なら、外部に聞かずに保存したデータを使う
+const CACHE_STALE_MS = 7 * 24 * 60 * 60 * 1000;   // 通信に失敗したときは、1週間以内の保存データで代用する
+const CACHE_MAX = 6;                              // 保存する場所の数（古いものから消す）
 const PAGE = 10;   // 一度に表示する件数（多すぎると重くなるため）。「さらに読み込む」で、さらに PAGE 件ずつ増やす
 
 const GENRES = {
@@ -106,32 +114,118 @@ function setStatus(msg, isError = false) {
 }
 
 // ---------- データ取得 ----------
-async function fetchPlaces(lat, lon, radius, onRetry) {
-  const q = `[out:json][timeout:25];nwr["name"]["amenity"~"^(restaurant|cafe|fast_food|bar|pub)$"](around:${radius},${lat},${lon});out center tags;`;
-  let lastErr;
-  for (const [i, ep] of OVERPASS.entries()) {
-    if (i > 0) { onRetry?.(i, OVERPASS.length - 1); await new Promise(r => setTimeout(r, 1500)); }
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
-    try {
-      const res = await fetch(ep, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(q),
-        signal: ac.signal,
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      // 混雑時は JSON ではなくエラー内容の XML が返るため、パースに失敗したら次のサーバーへ
-      const json = JSON.parse(await res.text());
-      if (/runtime error|timed out/i.test(json.remark || '')) throw new Error(json.remark);
-      return json.elements;
-    } catch (e) {
-      lastErr = e;
-    } finally {
-      clearTimeout(timer);
+// 軽い検索：ジャンルをまとめて正規表現で指定する書き方は、本家系のサーバーで 504 になりやすいので、ジャンルごとに分けて指定する
+function buildQuery(lat, lon, radius) {
+  const parts = ['restaurant', 'cafe', 'fast_food', 'bar', 'pub']
+    .map(a => `nwr["amenity"="${a}"]["name"](around:${radius},${lat},${lon});`).join('');
+  return `[out:json][timeout:20];(${parts});out center tags qt;`;
+}
+
+async function queryOne(ep, q, signal) {
+  const res = await fetch(ep, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'data=' + encodeURIComponent(q),
+    signal,
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  // 混雑時は JSON ではなくエラー内容の XML が返るため、パースに失敗したら次のサーバーへ
+  const json = JSON.parse(await res.text());
+  if (/runtime error|timed out/i.test(json.remark || '')) throw new Error(json.remark);
+  if (!Array.isArray(json.elements)) throw new Error('unexpected response');
+  return json.elements;
+}
+
+// 前回うまくいったサーバーから聞く。初めてのときは先頭の2つをランダムに入れかえて、特定のサーバーに偏らないようにする
+function endpointOrder() {
+  const list = OVERPASS.slice();
+  let good = null;
+  try { good = localStorage.getItem('nearbyGohan.endpoint'); } catch { /* なくても動く */ }
+  if (good && list.includes(good)) return [good, ...list.filter(e => e !== good)];
+  return Math.random() < 0.5 ? list : [list[1], list[0], ...list.slice(2)];
+}
+function rememberEndpoint(ep) { try { localStorage.setItem('nearbyGohan.endpoint', ep); } catch { /* なくても動く */ } }
+
+// 順番に聞く。失敗したらすぐ次へ、HEDGE_MS 待っても答えがなければ待たずに次にも聞く。最初に成功した結果を使い、残りは中止する
+function raceEndpoints(q, onSlow) {
+  const order = endpointOrder();
+  return new Promise((resolve, reject) => {
+    const controllers = [];
+    let next = 0, running = 0, done = false, lastErr = null, hedgeTimer = null;
+    const finish = fn => { done = true; clearTimeout(hedgeTimer); controllers.forEach(c => c.abort()); fn(); };
+    const armHedge = () => { clearTimeout(hedgeTimer); hedgeTimer = setTimeout(() => { if (!done) launch(); }, HEDGE_MS); };
+    function launch() {
+      if (done || next >= order.length) return false;
+      const ep = order[next++];
+      const ac = new AbortController();
+      controllers.push(ac);
+      const timer = setTimeout(() => ac.abort(), ATTEMPT_MS);
+      running++;
+      if (next > 1) onSlow?.(next);
+      queryOne(ep, q, ac.signal)
+        .then(els => { if (!done) { rememberEndpoint(ep); finish(() => resolve(els)); } })
+        .catch(e => { lastErr = e; })
+        .finally(() => {
+          clearTimeout(timer);
+          running--;
+          if (done) return;
+          if (!launch() && running === 0) finish(() => reject(lastErr || new Error('all endpoints failed')));
+        });
+      armHedge();
+      return true;
     }
+    launch();
+  });
+}
+
+// ---------- 取得したデータの一時保存（この端末の中だけ） ----------
+const snap = v => Math.round(v * 1000) / 1000;      // 約100mごとに丸める（近い場所なら同じデータを使い回せる）
+const cacheKey = (lat, lon, r) => `${CACHE_PREFIX}${snap(lat)},${snap(lon)},${r}`;
+const KEEP_TAGS = ['name', 'name:ja', 'amenity', 'cuisine', 'opening_hours', 'website', 'contact:website', 'phone', 'contact:phone', 'brand', 'brand:ja'];
+function slimElement(e) {                            // 使う項目だけに絞って、保存する量を減らす
+  const tags = {};
+  for (const k of KEEP_TAGS) if (e.tags && e.tags[k] != null) tags[k] = e.tags[k];
+  return { type: e.type, id: e.id, lat: e.lat, lon: e.lon, center: e.center, tags };
+}
+function readCache(key) {
+  try { const o = JSON.parse(localStorage.getItem(key)); return o && Array.isArray(o.els) && typeof o.t === 'number' ? o : null; } catch { return null; }
+}
+function pruneCache(max) {
+  try {
+    const items = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_PREFIX)) items.push({ k, t: (readCache(k) || { t: 0 }).t });
+    }
+    items.sort((a, b) => b.t - a.t).slice(max).forEach(x => localStorage.removeItem(x.k));
+  } catch { /* なくても動く */ }
+}
+function writeCache(key, els) {
+  const entry = JSON.stringify({ t: Date.now(), els: els.map(slimElement) });
+  try { localStorage.setItem(key, entry); } catch { pruneCache(1); try { localStorage.setItem(key, entry); } catch { /* 容量不足なら保存しない */ } }
+  pruneCache(CACHE_MAX);
+}
+
+// お店のデータを取る。{ els, source: 'cache'|'network'|'stale', age } を返す
+async function fetchPlaces(lat, lon, radius, onSlow) {
+  const key = cacheKey(lat, lon, radius);
+  const cached = readCache(key);
+  const age = cached ? Date.now() - cached.t : Infinity;
+  if (cached && age < CACHE_FRESH_MS) return { els: cached.els, source: 'cache', age };
+  try {
+    const els = await raceEndpoints(buildQuery(snap(lat), snap(lon), radius), onSlow);
+    writeCache(key, els);
+    return { els, source: 'network', age: 0 };
+  } catch (e) {
+    if (cached && age < CACHE_STALE_MS) return { els: cached.els, source: 'stale', age };
+    throw e;
   }
-  throw lastErr;
+}
+function fmtAge(ms) {
+  const m = Math.round(ms / 60000);
+  if (m < 60) return `${Math.max(m, 1)}分`;
+  const h = Math.round(m / 60);
+  return h < 48 ? `${h}時間` : `${Math.round(h / 24)}日`;
 }
 
 function openState(hours) {
@@ -269,15 +363,16 @@ async function searchAt(lat, lon) {
   setStatus('お店を探しています…');
   $('#list').replaceChildren();
   try {
-    const els = await fetchPlaces(lat, lon, state.radius, (n, max) => {
-      if (seq === searchSeq) setStatus(`サーバーが混み合っています。再試行しています…（${n}/${max}）`);
+    const res = await fetchPlaces(lat, lon, state.radius, () => {
+      if (seq === searchSeq) setStatus('応答が遅いので、別のサーバーにも問い合わせています…');
     });
     if (seq !== searchSeq) return; // 後から始めた検索を優先する
-    state.places = els.map(e => normalize(e, lat, lon, state.radius)).filter(Boolean);
+    state.places = res.els.map(e => normalize(e, lat, lon, state.radius)).filter(Boolean);
     render({ fit: true });
+    if (res.source === 'stale') setStatus(`${$('#status').textContent} ※通信できなかったため、${fmtAge(res.age)}前に保存したデータで表示しています。`);
   } catch (e) {
     console.error(e);
-    if (seq === searchSeq) setStatus('お店のデータを取得できませんでした。無料の公開サーバーが混み合っている可能性があります。少し待ってからもう一度お試しください。', true);
+    if (seq === searchSeq) setStatus('お店のデータを取得できませんでした。無料の公開サーバーがどれも応答しませんでした。少し待ってからもう一度お試しください。', true);
   }
 }
 
