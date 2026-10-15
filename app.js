@@ -14,7 +14,8 @@ const OVERPASS = [
 ];
 const ATTEMPT_MS = 14000;                         // 1つのサーバーを待つ上限
 const HEDGE_MS = 4000;                            // これだけ待っても答えがなければ、次のサーバーにも同時に聞く
-const CACHE_PREFIX = 'nearbyGohan.places.v1.';
+const CACHE_PREFIX = 'nearbyGohan.places.v2.';
+const OLD_CACHE_PREFIXES = ['nearbyGohan.places.v1.'];   // 支店名・駅が入っていない古い形式。使わずに消す
 const CACHE_FRESH_MS = 30 * 60 * 1000;            // 30分以内なら、外部に聞かずに保存したデータを使う
 const CACHE_STALE_MS = 7 * 24 * 60 * 60 * 1000;   // 通信に失敗したときは、1週間以内の保存データで代用する
 const CACHE_MAX = 6;                              // 保存する場所の数（古いものから消す）
@@ -118,7 +119,9 @@ function setStatus(msg, isError = false) {
 function buildQuery(lat, lon, radius) {
   const parts = ['restaurant', 'cafe', 'fast_food', 'bar', 'pub']
     .map(a => `nwr["amenity"="${a}"]["name"](around:${radius},${lat},${lon});`).join('');
-  return `[out:json][timeout:20];(${parts});out center tags qt;`;
+  // 同じ店名のチェーン店を見分けるために、近くの駅も一緒に取る
+  const stations = `node["railway"~"^(station|halt)$"]["name"](around:${radius + 600},${lat},${lon});`;
+  return `[out:json][timeout:20];(${parts}${stations});out center tags qt;`;
 }
 
 async function queryOne(ep, q, signal) {
@@ -181,7 +184,7 @@ function raceEndpoints(q, onSlow) {
 // ---------- 取得したデータの一時保存（この端末の中だけ） ----------
 const snap = v => Math.round(v * 1000) / 1000;      // 約100mごとに丸める（近い場所なら同じデータを使い回せる）
 const cacheKey = (lat, lon, r) => `${CACHE_PREFIX}${snap(lat)},${snap(lon)},${r}`;
-const KEEP_TAGS = ['name', 'name:ja', 'amenity', 'cuisine', 'opening_hours', 'website', 'contact:website', 'phone', 'contact:phone', 'brand', 'brand:ja'];
+const KEEP_TAGS = ['name', 'name:ja', 'amenity', 'cuisine', 'opening_hours', 'website', 'contact:website', 'phone', 'contact:phone', 'brand', 'brand:ja', 'branch', 'branch:ja', 'railway'];
 function slimElement(e) {                            // 使う項目だけに絞って、保存する量を減らす
   const tags = {};
   for (const k of KEEP_TAGS) if (e.tags && e.tags[k] != null) tags[k] = e.tags[k];
@@ -198,6 +201,14 @@ function pruneCache(max) {
       if (k && k.startsWith(CACHE_PREFIX)) items.push({ k, t: (readCache(k) || { t: 0 }).t });
     }
     items.sort((a, b) => b.t - a.t).slice(max).forEach(x => localStorage.removeItem(x.k));
+  } catch { /* なくても動く */ }
+}
+function purgeOldCache() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && OLD_CACHE_PREFIXES.some(pre => k.startsWith(pre))) localStorage.removeItem(k);
+    }
   } catch { /* なくても動く */ }
 }
 function writeCache(key, els) {
@@ -233,32 +244,116 @@ function openState(hours) {
   try { return new opening_hours(hours).getState(new Date()); } catch { return null; }
 }
 
-function normalize(el, lat0, lon0, radius) {
+// ---- お店のデータの整理：解析 → 二重登録の統合 → 仕上げ（支店名・営業中・点数） ----
+function parsePlace(el, lat0, lon0) {
   const t = el.tags || {};
   const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
-  if (lat == null || lon == null) return null;
-  const cuisines = (t.cuisine || '').split(';').map(s => s.trim()).filter(Boolean);
-  const p = {
+  const name = t['name:ja'] || t.name;
+  if (lat == null || lon == null || !name) return null;
+  return {
     id: el.type + el.id,
-    name: t['name:ja'] || t.name,
-    amenity: t.amenity, cuisines, lat, lon,
+    name,
+    amenity: t.amenity,
+    cuisines: (t.cuisine || '').split(';').map(s => s.trim()).filter(Boolean),
+    lat, lon,
     dist: haversine(lat0, lon0, lat, lon),
     hours: t.opening_hours || null,
     website: safeUrl(t.website || t['contact:website']),
     phone: safePhone(t.phone || t['contact:phone']),
     brand: t['brand:ja'] || t.brand || '',
+    branchTag: String(t['branch:ja'] || t.branch || '').trim(),
   };
+}
+
+// 地図データでは、同じお店が近い場所に2回登録されていることがある（片方は電話番号・営業時間つき、片方はほぼ空、など）。
+// 同じ店名で40m以内のものは1件にまとめ、情報は両方から集める。支店名が別々に登録されているものは、別のお店として残す。
+const DUP_METERS = 40;
+function mergeDuplicates(list) {
+  const key = p => p.name.normalize('NFKC').replace(/[\s\u3000]/g, '').toLowerCase();
+  const info = p => (p.website ? 1 : 0) + (p.phone ? 1 : 0) + (p.hours ? 1 : 0) + (p.cuisines.length ? 1 : 0) + (p.branchTag ? 1 : 0);
+  const groups = new Map();
+  for (const p of list) { const k = key(p); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); }
+  const out = [];
+  for (const g of groups.values()) {
+    const used = new Set();
+    for (const a of g) {
+      if (used.has(a)) continue;
+      const cluster = [a];
+      used.add(a);
+      for (let i = 0; i < cluster.length; i++) {
+        for (const b of g) {
+          if (used.has(b)) continue;
+          const diffBranch = cluster[i].branchTag && b.branchTag && cluster[i].branchTag !== b.branchTag;
+          if (!diffBranch && haversine(cluster[i].lat, cluster[i].lon, b.lat, b.lon) <= DUP_METERS) { cluster.push(b); used.add(b); }
+        }
+      }
+      cluster.sort((x, y) => info(y) - info(x));
+      const best = cluster[0];
+      for (const o of cluster.slice(1)) {
+        for (const f of ['hours', 'website', 'phone', 'brand', 'branchTag']) best[f] = best[f] || o[f];
+        if (!best.cuisines.length) best.cuisines = o.cuisines;
+      }
+      out.push(best);
+    }
+  }
+  return out;
+}
+
+// 店名と支店名に分ける。支店名は、登録されている branch の値を優先し、なければ店名の末尾の「〇〇店」から取る
+const BRANCH_SUFFIX = /^(.+)[\s\u3000]+(\S{1,20}(?:店|支店|本店|分店|営業所|号店|館))$/;
+function splitBranch(name, branchTag) {
+  if (branchTag) {
+    if (name.endsWith(branchTag) && name.length > branchTag.length) {   // 店名の中にも支店名が入っている場合は、取り除く
+      const main = name.slice(0, -branchTag.length).replace(/[\s\u3000\-\uFF0D・]+$/, '').trim();
+      return { main: main || name, branch: branchTag };
+    }
+    return { main: name, branch: branchTag };
+  }
+  const m = name.match(BRANCH_SUFFIX);
+  if (m && m[1].trim().length >= 2) return { main: m[1].trim(), branch: m[2] };
+  return { main: name, branch: '' };
+}
+
+function finalizePlace(p, radius) {
   p.open = openState(p.hours);
-  p.genreLabel = (cuisines.map(c => CUISINE_JA[c]).filter(Boolean)[0]) || AMENITY_JA[p.amenity] || '飲食店';
+  p.genreLabel = (p.cuisines.map(c => CUISINE_JA[c]).filter(Boolean)[0]) || AMENITY_JA[p.amenity] || '飲食店';
+  const { main, branch } = splitBranch(p.name, p.branchTag);
+  p.displayName = main;
+  p.branchLabel = branch;
+  p.hint = '';
   // おすすめ度：営業中を最優先、近さ、登録情報の充実度
   let s = 30 * (1 - Math.min(p.dist / radius, 1));
   if (p.open === true) s += 40; else if (p.open === false) s -= 50;
-  if (cuisines.length) s += 8;
+  if (p.cuisines.length) s += 8;
   if (p.hours) s += 6;
   if (p.website) s += 6;
   if (p.phone) s += 4;
   p.baseScore = s;   // プロフィールによる加点は GP.personalize() が p.score に反映する
   return p;
+}
+
+// 同じ店名が複数あって、支店名が登録されていないお店には、最寄り駅からの距離を添えて見分けやすくする
+const isStation = e => !!(e.tags && /^(station|halt)$/.test(e.tags.railway));
+function stationList(els) {
+  return els.filter(isStation).map(e => {
+    const t = e.tags;
+    const name = t['name:ja'] || t.name;
+    return { name: /駅$/.test(name) ? name : name + '駅', lat: e.lat ?? e.center?.lat, lon: e.lon ?? e.center?.lon };
+  }).filter(st => st.name && st.lat != null && st.lon != null);
+}
+function addStationHints(places, stations) {
+  if (!stations.length) return;
+  const count = new Map();
+  for (const p of places) count.set(p.displayName, (count.get(p.displayName) || 0) + 1);
+  for (const p of places) {
+    if (p.branchLabel || count.get(p.displayName) < 2) continue;
+    let best = null;
+    for (const st of stations) {
+      const d = haversine(p.lat, p.lon, st.lat, st.lon);
+      if (!best || d < best.d) best = { d, name: st.name };
+    }
+    if (best && best.d <= 1000) p.hint = `${best.name}から約${fmtDist(best.d)}`;
+  }
 }
 
 // ---------- 地図 ----------
@@ -282,7 +377,7 @@ function drawMap(shown) {
   circle = L.circle([state.lat, state.lon], { radius: state.radius, color: css('--you'), weight: 1.5, fillOpacity: 0.06 }).addTo(map);
   for (const p of shown) {
     const m = L.circleMarker([p.lat, p.lon], { ...pinStyle(false), fillOpacity: 0.95 });
-    m.bindTooltip(p.name);
+    m.bindTooltip(p.displayName + (p.branchLabel ? ' ' + p.branchLabel : ''));
     m.on('click', () => select(p.id, true));
     m.addTo(layer);
     markers.set(p.id, m);
@@ -325,7 +420,9 @@ function card(p, rank) {
   return h('li', { class: 'card' + (best ? ' best' : ''), id: 'c-' + p.id, onclick: () => select(p.id, false) },
     best && h('div', { class: 'badge' }, 'いまのあなたにいちばん'),
     h('div', { class: 'top' },
-      h('span', { class: 'name' }, p.name),
+      h('span', { class: 'name' },
+        h('span', { class: 'name-main' }, p.displayName),
+        (p.branchLabel || p.hint) && h('span', { class: 'branch' }, p.branchLabel || p.hint)),
       h('span', { class: 'dist' }, fmtDist(p.dist))),
     h('div', { class: 'meta' },
       h('span', { class: 'tag genre' }, p.genreLabel),
@@ -367,7 +464,9 @@ async function searchAt(lat, lon) {
       if (seq === searchSeq) setStatus('応答が遅いので、別のサーバーにも問い合わせています…');
     });
     if (seq !== searchSeq) return; // 後から始めた検索を優先する
-    state.places = res.els.map(e => normalize(e, lat, lon, state.radius)).filter(Boolean);
+    const parsed = res.els.filter(e => !isStation(e) && e.tags && e.tags.amenity).map(e => parsePlace(e, lat, lon)).filter(Boolean);
+    state.places = mergeDuplicates(parsed).map(p => finalizePlace(p, state.radius));
+    addStationHints(state.places, stationList(res.els));
     render({ fit: true });
     if (res.source === 'stale') setStatus(`${$('#status').textContent} ※通信できなかったため、${fmtAge(res.age)}前に保存したデータで表示しています。`);
   } catch (e) {
@@ -446,6 +545,7 @@ $('#mood').addEventListener('keydown', e => {
 });
 
 // ---------- 起動時 ----------
+purgeOldCache();
 moodText = readMood();
 $('#mood').value = moodText;
 rebuildContext();

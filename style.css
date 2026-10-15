@@ -207,3 +207,8 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; }
   width: 100%; min-width: 0; min-height: 46px; padding: 8px 10px; font-size: 16px; font-weight: 500;
   background: var(--cream); border-color: var(--line); color: var(--text);
 }
+
+/* 店名と支店名（支店名は店名より少し小さく、2行目に表示） */
+.name { display: block; }
+.name-main { display: block; }
+.branch { display: block; margin-top: 1px; font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--sub); }
