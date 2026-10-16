@@ -88,7 +88,7 @@ label.toggle input { width: 20px; height: 20px; accent-color: var(--red); }
 /* 地図 */
 #map {
   height: 280px; margin-top: 16px; border-radius: 24px; overflow: hidden;
-  box-shadow: var(--shadow); border: 1px solid var(--line); z-index: 0;
+  box-shadow: var(--shadow); border: 1px solid var(--line); z-index: 0; scroll-margin-top: 12px;
 }
 .leaflet-tile-pane { filter: sepia(.14) saturate(.82) brightness(1.04) contrast(.96); }
 .leaflet-container { font-family: var(--font); background: #f6ead6; }

@@ -463,6 +463,12 @@ function select(id, scrollToCard) {
 }
 
 // ---------- 検索の実行 ----------
+// 検索ボタンを押したら、地図までなめらかに動かす（結果を待たずに動かすと、探している様子が見える）
+function scrollToMap() {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $('#map').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+}
+
 let searchSeq = 0;
 async function searchAt(lat, lon) {
   const seq = ++searchSeq;
@@ -525,8 +531,15 @@ for (const [key, g] of Object.entries(GENRES)) {
     },
   }, g.label));
 }
-$('#locate').addEventListener('click', locate);
-$('#searchForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#place').value.trim(); if (q) searchPlaceName(q); });
+$('#locate').addEventListener('click', () => { scrollToMap(); locate(); });
+$('#searchForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const q = $('#place').value.trim();
+  if (!q) return;
+  $('#place').blur();            // スマホのキーボードを閉じてから動かす
+  scrollToMap();
+  searchPlaceName(q);
+});
 $('#radius').addEventListener('change', e => { state.radius = Number(e.target.value); if (state.lat != null) searchAt(state.lat, state.lon); });
 $('#openOnly').addEventListener('change', e => { state.openOnly = e.target.checked; state.limit = PAGE; render(); });
 $('#more').addEventListener('click', () => { state.limit += PAGE; render(); });
