@@ -568,17 +568,28 @@ $('#mood').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); clearTimeout(moodTimer); applyMood(e.target.value); e.target.blur(); }
 });
 
+// ---------- 誕生日のお祝い ----------
+// 誕生日当日の、その日はじめての表示のときだけ、紙ふぶきでお祝いする（2回目以降は出さない）。
+// URL の末尾に ?party を付けると、いつでも見られる（動作確認用）
+function maybeCelebrate() {
+  const preview = new URLSearchParams(location.search).has('party');
+  if (!preview && !(ctx && ctx.birthdayToday)) return;
+  GohanCelebrate.birthday(ctx && ctx.hasProfile ? ctx.profile.name : '', { force: preview });
+}
+
 // ---------- 起動時 ----------
 purgeOldCache();
 moodText = readMood();
 $('#mood').value = moodText;
 rebuildContext();
 updateNote();
+maybeCelebrate();
 document.querySelectorAll('.example').forEach(b => b.setAttribute('aria-pressed', String(b.textContent === moodText)));
 // プロフィール画面から「戻る」で戻ってきたときも、最新のプロフィールで並べ直す
 window.addEventListener('pageshow', e => {
   if (!e.persisted) return;
   rebuildContext();
   updateNote();
+  maybeCelebrate();
   if (state.lat != null) render();
 });

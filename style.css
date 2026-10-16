@@ -215,3 +215,14 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; }
 
 /* 「こんなときに」の一言（上位のお店だけ） */
 .copy { margin-top: 6px; font-size: 14px; font-weight: 700; line-height: 1.5; color: var(--red-text); }
+
+/* ===== 誕生日のお祝い（紙ふぶきとひとこと） ===== */
+.party-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1000; }
+.party-toast {
+  position: fixed; z-index: 1001; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 14px);
+  width: max-content; max-width: calc(100% - 32px); padding: 10px 20px; border-radius: 22px; text-align: center;
+  background: var(--card); color: var(--red-text); border: 1.5px solid var(--red-line); box-shadow: var(--shadow);
+  font-size: 15px; font-weight: 700; line-height: 1.5; pointer-events: none;
+  opacity: 0; transform: translate(-50%, -12px); transition: opacity .4s ease, transform .4s ease;
+}
+.party-toast.show { opacity: 1; transform: translate(-50%, 0); }
