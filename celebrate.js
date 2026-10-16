@@ -6,7 +6,9 @@
 // 画面の動きを減らす設定の端末では、何も出さない。
 window.GohanCelebrate = (() => {
   const KEY = 'nearbyGohan.partyShown.v1';
-  const COLORS = ['#c9441f', '#e4572e', '#f5a96a', '#ffc531', '#f2c14e', '#f08a6b', '#ffd98a'];   // 街のイラストと同じ暖色系
+  // サイトの暖色（赤〜黄色）に溶け込まないよう、ピンク・紫・青・水色・緑を中心にする。
+  // どれも地のクリーム色との明るさの差（コントラスト比）が 2.4 以上で、オレンジと赤を少しだけ混ぜている
+  const COLORS = ['#ff3d81', '#8b46e8', '#2a6df4', '#00a9d6', '#12b070', '#ff7a1a', '#e8344a'];
   const GRAVITY = 520, DRAG = 3;       // px/s²・1/s。軽い紙がゆっくり落ちる感じ
   const LIFE = 5, FADE = 0.8;          // 全体の長さと、最後に消えていく時間（秒）
   const WAVES = [{ at: 0, n: 46 }, { at: 0.5, n: 34 }];   // 1回目と、少し遅れた2回目（左右それぞれの数）
@@ -42,7 +44,7 @@ window.GohanCelebrate = (() => {
       for (let i = 0; i < n; i++) {
         const tilt = rand(10, 42) * Math.PI / 180;          // 真上から、内側へ傾ける角度
         const v = h * rand(1.4, 2.8);                       // 打ち上げの速さ（画面の高さに合わせる）
-        const size = rand(6, 12);
+        const size = rand(8, 15);
         pieces.push({
           x: fromRight ? w - 6 : 6, y: h * 0.9,
           vx: (fromRight ? -1 : 1) * Math.sin(tilt) * v, vy: -Math.cos(tilt) * v,
