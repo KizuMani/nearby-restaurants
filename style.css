@@ -212,3 +212,6 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; }
 .name { display: block; }
 .name-main { display: block; }
 .branch { display: block; margin-top: 1px; font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--sub); }
+
+/* 「こんなときに」の一言（上位のお店だけ） */
+.copy { margin-top: 6px; font-size: 14px; font-weight: 700; line-height: 1.5; color: var(--red-text); }

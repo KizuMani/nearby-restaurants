@@ -215,7 +215,8 @@
       if (pts > topPts) { topPts = pts; topIntent = it; }
     }
     s += clamp(moodPts * MOOD_WEIGHT, -45, 60);
-    if (topIntent && topPts >= 12) p.reasons.push('気分に合う：' + topIntent.label);
+    p.moodIntent = topIntent && topPts >= 12 ? topIntent : null;   // 一言の文言（catchCopy）でも使う
+    if (p.moodIntent) p.reasons.push('気分に合う：' + topIntent.label);
 
     // ごはん代と、気分による価格の傾向
     if (price) {
@@ -238,8 +239,60 @@
     return p;
   }
 
+  // ---------- 一言の文言（上位のお店だけに付ける） ----------
+  // 書くのは、データで確かめられること（営業時間）と、場面の提案（「〇〇のときに」）だけ。
+  // お店の味・メニュー・評判は、今のデータにないので書かない（「たまらない」「いちおし」などの断定はしない）。
+  const SCENE_COPY = {
+    alcohol:  ['仕事帰りの一杯に', '仲間と軽く飲みたい日に'],
+    yakiniku: ['がっつり肉を食べたい日に', '仲間とわいわい楽しみたいときに'],
+    sushi:    ['ちょっといいものを食べたい日に', 'お祝いやおもてなしの候補に'],
+    french:   ['ちょっと特別な日のごちそうに', '記念日やお祝いの候補に'],
+    ramen:    ['がっつり満腹になりたい日に', 'しっかり食べて元気を出したい日に'],
+    udon:     ['あっさり軽めに済ませたい日に', '胃にやさしく食べたい日に'],
+    gyudon:   ['時間がない日でも、サクッと満腹に', '手早く済ませたいときに'],
+    chinese:  ['みんなでシェアして楽しみたいときに', 'ボリュームもしっかり、の気分に'],
+    italian:  ['友人や家族とシェアして楽しみたいときに', 'ちょっと気分を上げたいときに'],
+    fastfood: ['さっと済ませたいときに', '隙間時間にぱっと立ち寄りたいときに'],
+    cafe:     ['ひと息つきたいときに', '待ち合わせや作業のお供に'],
+  };
+  const SCENE_ORDER = ['alcohol', 'yakiniku', 'sushi', 'french', 'ramen', 'udon', 'gyudon', 'chinese', 'italian', 'fastfood', 'cafe'];
+  const MOOD_COPY = {
+    quick: '早く済ませたい今日にぴったり', celebrate: '特別な日の食事の候補に', cheap: 'お財布にやさしく済ませたい日に',
+    light: 'あっさり軽めの気分に', hearty: 'がっつり食べたい気分に', relax: 'ゆっくり過ごしたい気分に',
+    drink: '一杯飲みたい気分に', spicy: '辛いものが食べたい気分に', cold: '温まりたい日に', hot: '涼しくさっぱり食べたい日に',
+  };
+  const hashOf = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+  function fmtClock(d) {
+    const h = d.getHours(), m = d.getMinutes(), mm = String(m).padStart(2, '0');
+    if (h === 0 && m === 0) return '24時';
+    const base = h < 5 ? `深夜${h}` : String(h);
+    return m ? `${base}:${mm}` : `${base}時`;
+  }
+  // 営業時間から言えること：営業中なら「〇時まで営業」、まだ開いていない（今日開く）なら「〇時から営業」
+  function timeFact(p, now) {
+    const next = p.nextChange;
+    if (!(next instanceof Date) || isNaN(next)) return '';
+    if (p.open === true && next - now < 20 * 3600 * 1000) return `${fmtClock(next)}まで営業`;
+    if (p.open === false && next.toDateString() === now.toDateString()) return `${fmtClock(next)}から営業`;
+    return '';
+  }
+  // 戻り値：{ text, kind: 'mood' | 'scene' }。書けることがなければ null
+  function catchCopy(p, ctx, now = new Date()) {
+    let phrase = '', kind = 'scene';
+    if (ctx && p.moodIntent && MOOD_COPY[p.moodIntent.id]) {
+      kind = 'mood';
+      phrase = p.moodIntent.label === 'お誕生日' ? 'お誕生日のお祝いの候補に' : MOOD_COPY[p.moodIntent.id];
+    } else {
+      const genres = genresOf(p);
+      const key = SCENE_ORDER.find(k => (k === 'alcohol' ? isAlcohol(p) : genres.has(k)));
+      if (key) phrase = SCENE_COPY[key][hashOf(p.id) % SCENE_COPY[key].length];   // 同じお店には、いつも同じ文言（開くたびに変わらない）
+    }
+    const text = [timeFact(p, now), phrase].filter(Boolean).join('。');
+    return text ? { text, kind } : null;
+  }
+
   window.GohanProfile = {
     CATEGORIES, BUDGETS, MOOD_EXAMPLES,
-    load, save, clear, ageOf, isBirthday, interpretMood, buildContext, personalize, labelOf,
+    load, save, clear, ageOf, isBirthday, interpretMood, buildContext, personalize, labelOf, catchCopy,
   };
 })();

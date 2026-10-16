@@ -19,6 +19,7 @@ const OLD_CACHE_PREFIXES = ['nearbyGohan.places.v1.'];   // 支店名・駅が�
 const CACHE_FRESH_MS = 30 * 60 * 1000;            // 30分以内なら、外部に聞かずに保存したデータを使う
 const CACHE_STALE_MS = 7 * 24 * 60 * 60 * 1000;   // 通信に失敗したときは、1週間以内の保存データで代用する
 const CACHE_MAX = 6;                              // 保存する場所の数（古いものから消す）
+const COPY_TOP = 3;   // 「こんなときに」の一言を付けるお店の数（全店に付けると読みづらいため、上位だけ）
 const PAGE = 10;   // 一度に表示する件数（多すぎると重くなるため）。「さらに読み込む」で、さらに PAGE 件ずつ増やす
 
 const GENRES = {
@@ -239,9 +240,12 @@ function fmtAge(ms) {
   return h < 48 ? `${h}時間` : `${Math.round(h / 24)}日`;
 }
 
-function openState(hours) {
-  if (!hours || typeof opening_hours === 'undefined') return null;
-  try { return new opening_hours(hours).getState(new Date()); } catch { return null; }
+function openInfo(hours) {
+  if (!hours || typeof opening_hours === 'undefined') return { open: null, next: null };
+  try {
+    const oh = new opening_hours(hours), now = new Date();
+    return { open: oh.getState(now), next: oh.getNextChange(now) || null };   // next：次に開く・閉まる時刻
+  } catch { return { open: null, next: null }; }
 }
 
 // ---- お店のデータの整理：解析 → 二重登録の統合 → 仕上げ（支店名・営業中・点数） ----
@@ -315,7 +319,9 @@ function splitBranch(name, branchTag) {
 }
 
 function finalizePlace(p, radius) {
-  p.open = openState(p.hours);
+  const oi = openInfo(p.hours);
+  p.open = oi.open;
+  p.nextChange = oi.next;
   p.genreLabel = (p.cuisines.map(c => CUISINE_JA[c]).filter(Boolean)[0]) || AMENITY_JA[p.amenity] || '飲食店';
   const { main, branch } = splitBranch(p.name, p.branchTag);
   p.displayName = main;
@@ -414,9 +420,13 @@ function render({ fit = false } = {}) {
   if (state.selectedId) markSelected(state.selectedId);
 }
 
+// 理由のチップ。一言の文言が気分に合わせたものなら、同じ内容のチップは重ねない
+const whyList = (p, cp) => p.reasons.filter(r => !(cp && cp.kind === 'mood' && r.startsWith('気分に合う'))).slice(0, 3);
+
 function card(p, rank) {
   const gmap = `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
   const best = !!ctx && rank === 0;
+  const cp = rank < COPY_TOP ? GP.catchCopy(p, ctx) : null;
   return h('li', { class: 'card' + (best ? ' best' : ''), id: 'c-' + p.id, onclick: () => select(p.id, false) },
     best && h('div', { class: 'badge' }, 'いまのあなたにいちばん'),
     h('div', { class: 'top' },
@@ -424,12 +434,13 @@ function card(p, rank) {
         h('span', { class: 'name-main' }, p.displayName),
         (p.branchLabel || p.hint) && h('span', { class: 'branch' }, p.branchLabel || p.hint)),
       h('span', { class: 'dist' }, fmtDist(p.dist))),
+    cp && h('div', { class: 'copy' }, cp.text),
     h('div', { class: 'meta' },
       h('span', { class: 'tag genre' }, p.genreLabel),
       p.open === true && h('span', { class: 'tag open' }, '営業中'),
       p.open === false && h('span', { class: 'tag' }, '営業時間外'),
       ctx && p.priceLabel && h('span', { class: 'tag price' }, p.priceLabel)),
-    ctx && p.reasons.length > 0 && h('div', { class: 'why' }, p.reasons.slice(0, 3).map(r => h('span', { class: 'why-chip' }, r))),
+    ctx && whyList(p, cp).length > 0 && h('div', { class: 'why' }, whyList(p, cp).map(r => h('span', { class: 'why-chip' }, r))),
     p.hours && h('div', { class: 'hours' }, p.hours),
     h('div', { class: 'links' },
       h('a', { href: gmap, target: '_blank', rel: 'noopener' }, '地図で開く'),
